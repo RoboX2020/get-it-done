@@ -37,10 +37,10 @@
             <p class="empty-title">That link did not load.</p>
             <p class="broken-url"></p>
           </div>
-          <div class="caption" aria-live="polite">
-            <p class="kicker"></p>
-            <p class="cap"></p>
-          </div>
+        </div>
+        <div class="caption" aria-live="polite" hidden>
+          <p class="kicker"></p>
+          <p class="cap"></p>
         </div>
         <div class="meter" hidden></div>
         <form class="setup" hidden>
@@ -114,6 +114,7 @@
   let lastSaved = "";
   let lastHref = location.href;
   let memoryQ = null;
+  let memoryHigh = null;
   let memoryFinished = null;
   let resetArmed = false;
   let resetTimer = 0;
@@ -319,16 +320,42 @@
     }
   }
 
+  function highKey() {
+    return `getDoneHigh:${location.host}`;
+  }
+
   function finishKey() {
     return `getDoneFinished:${location.host}`;
   }
 
+  function readHigh() {
+    try {
+      const stored = sessionStorage.getItem(highKey());
+      if (stored == null || stored === "") return memoryHigh;
+      const value = Number(stored);
+      return Number.isFinite(value) ? value : memoryHigh;
+    } catch (error) {
+      return memoryHigh;
+    }
+  }
+
+  function writeHigh(value) {
+    memoryHigh = value;
+    try {
+      sessionStorage.setItem(highKey(), String(value));
+    } catch (error) {
+      /* sandboxed frames can throw */
+    }
+  }
+
   function clearQuestionMemory() {
     memoryQ = null;
+    memoryHigh = null;
     memoryFinished = null;
     detected = null;
     try {
       sessionStorage.removeItem(questionKey());
+      sessionStorage.removeItem(highKey());
       sessionStorage.removeItem("getDoneSuppress");
       sessionStorage.removeItem(finishKey());
     } catch (error) {
@@ -443,6 +470,8 @@
 
   function setView(view) {
     stage.dataset.view = view;
+    const caption = shadow.querySelector(".caption");
+    if (caption) caption.hidden = view !== "photo";
   }
 
   function renderStage() {
@@ -459,6 +488,9 @@
     }
     if (state.revealed <= 0) {
       setView("waiting");
+      kicker.textContent = "";
+      cap.textContent = "";
+      photo.removeAttribute("src");
       waitCount.textContent = String(state.images.length);
       waitCopy.textContent = state.images.length === 1
         ? "1 picture is sealed. Finish a question and it flashes here. Drag the top bar to move this window."
@@ -494,6 +526,10 @@
     setup.hidden = !open;
     stage.hidden = open;
     foot.hidden = open;
+    if (open) {
+      const caption = shadow.querySelector(".caption");
+      if (caption) caption.hidden = true;
+    }
     if (open) {
       textarea.value = state.rawLinks;
       refreshSetupCount();
@@ -734,15 +770,17 @@
     const previous = readQ();
     if (previous == null || Number.isNaN(previous)) {
       writeQ(current);
+      const seen = readHigh();
+      writeHigh(seen == null ? current : Math.max(seen, current));
       return;
     }
     if (current === previous) return;
-    if (current < previous) {
-      writeQ(current);
-      return;
-    }
-    const delta = current - previous;
     writeQ(current);
+    if (current < previous) return;
+    const mark = readHigh() == null ? previous : readHigh();
+    if (current <= mark) return;
+    const delta = current - mark;
+    writeHigh(current);
     if (consumeSuppress(current)) return;
     reveal(Math.min(delta, 3), "auto");
   }

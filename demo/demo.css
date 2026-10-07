@@ -98,6 +98,10 @@ body {
   color: rgba(247, 244, 239, 0.72);
 }
 
+#quiz {
+  color: #f7f4ef;
+}
+
 .switcher {
   display: flex;
   flex-wrap: wrap;
