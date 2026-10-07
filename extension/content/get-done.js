@@ -275,6 +275,13 @@
     }
     const fromHost = GetDone.platformFromHost(location.hostname);
     if (fromHost) return fromHost;
+    const href = String(location.href || "");
+    if (/(playerhomework|assignmentplayer|assignmentviewer|overviewhomework|mathxl|mylab|mastering)/i.test(href)) {
+      return GetDone.platformById("pearson");
+    }
+    if (document.querySelector("#activityFrame, [command='checkanswer'], #xl_player_layout_SplitTopLayout_0, .contentHolder")) {
+      return GetDone.platformById("pearson");
+    }
     return platformFromDocument();
   }
 
@@ -302,19 +309,42 @@
     try {
       const stored = sessionStorage.getItem(questionKey());
       if (stored == null || stored === "") return memoryQ;
-      const value = Number(stored);
-      return Number.isFinite(value) ? value : memoryQ;
+      return stored;
     } catch (error) {
       return memoryQ;
     }
   }
 
   function writeQ(value) {
-    memoryQ = value;
+    if (value == null || value === "") return;
+    memoryQ = String(value);
     try {
-      sessionStorage.setItem(questionKey(), String(value));
+      sessionStorage.setItem(questionKey(), memoryQ);
     } catch (error) {
       /* sandboxed frames can throw */
+    }
+  }
+
+  function readQIndex() {
+    try {
+      const stored = sessionStorage.getItem(`${questionKey()}:index`);
+      if (stored == null || stored === "") return null;
+      const value = Number(stored);
+      return Number.isFinite(value) ? value : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeQIndex(value) {
+    try {
+      if (value == null || !Number.isFinite(value)) {
+        sessionStorage.removeItem(`${questionKey()}:index`);
+        return;
+      }
+      sessionStorage.setItem(`${questionKey()}:index`, String(value));
+    } catch (error) {
+      /* ignore */
     }
   }
 
@@ -356,11 +386,24 @@
 
   const memorySets = {};
 
-  function readNumberSet(key) {
+  function readIdSet(key) {
     try {
       const raw = sessionStorage.getItem(key);
       if (raw == null) return new Set(memorySets[key] || []);
-      const values = raw.split(",").map(Number).filter((value) => Number.isFinite(value) && value > 0);
+      let values = [];
+      if (raw.startsWith("[")) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) values = parsed;
+      } else {
+        values = raw
+          .split(",")
+          .map((piece) => piece.trim())
+          .filter(Boolean)
+          .map((piece) => {
+            const asNumber = Number(piece);
+            return Number.isFinite(asNumber) && asNumber > 0 ? String(asNumber) : piece;
+          });
+      }
       memorySets[key] = values;
       return new Set(values);
     } catch (error) {
@@ -368,37 +411,72 @@
     }
   }
 
-  function writeNumberSet(key, values) {
-    const list = [...values].filter((value) => Number.isFinite(value) && value > 0);
+  function writeIdSet(key, values) {
+    const list = [...values].filter((value) => typeof value === "string" && value);
     memorySets[key] = list;
     try {
-      sessionStorage.setItem(key, list.join(","));
+      sessionStorage.setItem(key, JSON.stringify(list));
     } catch (error) {
       /* ignore */
     }
   }
 
-  function isVerified(questionNumber) {
-    return readNumberSet(verifiedKey()).has(questionNumber);
+  function normalizeQuestionId(value) {
+    if (value == null || value === "") return null;
+    if (typeof value === "string") return value;
+    if (Number.isFinite(value) && value >= 1) return String(value);
+    return null;
   }
 
-  function isPaid(questionNumber) {
-    return readNumberSet(paidKey()).has(questionNumber);
+  function isVerified(questionId) {
+    const key = normalizeQuestionId(questionId);
+    if (!key) return false;
+    return readIdSet(verifiedKey()).has(key);
   }
 
-  function witness(questionNumber) {
-    if (!Number.isFinite(questionNumber) || questionNumber < 1) return;
-    const verified = readNumberSet(verifiedKey());
-    if (verified.has(questionNumber)) return;
-    verified.add(questionNumber);
-    writeNumberSet(verifiedKey(), verified);
+  function isPaid(questionId) {
+    const key = normalizeQuestionId(questionId);
+    if (!key) return false;
+    return readIdSet(paidKey()).has(key);
+  }
+
+  function witness(questionId) {
+    const key = normalizeQuestionId(questionId);
+    if (!key) return;
+    const verified = readIdSet(verifiedKey());
+    if (verified.has(key)) return;
+    verified.add(key);
+    writeIdSet(verifiedKey(), verified);
     updateStatusLine();
   }
 
-  function markPaid(questionNumber) {
-    const paid = readNumberSet(paidKey());
-    paid.add(questionNumber);
-    writeNumberSet(paidKey(), paid);
+  function postToTop(payload) {
+    if (window.top === window) return false;
+    try {
+      window.top.postMessage({ source: QUESTION_MESSAGE, ...payload }, "*");
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function witnessQuestion(questionNumber) {
+    if (postToTop({ kind: "witness", question: questionNumber })) return;
+    witness(questionNumber);
+  }
+
+  function armAdvance(questionNumber) {
+    const payload = { question: questionNumber, at: Date.now() };
+    if (postToTop({ kind: "armed", ...payload })) return;
+    armedAttempt = payload;
+  }
+
+  function markPaid(questionId) {
+    const key = normalizeQuestionId(questionId);
+    if (!key) return;
+    const paid = readIdSet(paidKey());
+    paid.add(key);
+    writeIdSet(paidKey(), paid);
   }
 
   function clearQuestionMemory() {
@@ -410,6 +488,7 @@
     delete memorySets[paidKey()];
     try {
       sessionStorage.removeItem(questionKey());
+      sessionStorage.removeItem(`${questionKey()}:index`);
       sessionStorage.removeItem(highKey());
       sessionStorage.removeItem("getDoneSuppress");
       sessionStorage.removeItem(finishKey());
@@ -513,12 +592,15 @@
       return;
     }
     const where = platform ? ` on ${platform.name}` : "";
-    const place = detected.total
-      ? `Question ${detected.current} of ${detected.total}${where}`
-      : `Question ${detected.current}${where}`;
-    if (isPaid(detected.current)) {
+    const place =
+      detected.kind === "slug"
+        ? `Problem ${detected.label || detected.key}${where}`
+        : detected.total
+          ? `Question ${detected.index ?? detected.key} of ${detected.total}${where}`
+          : `Question ${detected.label || detected.key}${where}`;
+    if (isPaid(detected.key)) {
       statusLine.textContent = `${place}. Picture already flashed.`;
-    } else if (isVerified(detected.current)) {
+    } else if (isVerified(detected.key)) {
       statusLine.textContent = `${place}. Recorded. The picture flashes when you move on.`;
     } else {
       statusLine.textContent = `${place}. Sealed until this page records the question.`;
@@ -657,7 +739,10 @@
     state.enabledOrigins[origin] = true;
     save();
     applyMode("open");
-    if (detected && readQ() == null) writeQ(detected.current);
+    if (detected && readQ() == null) {
+      writeQ(detected.key);
+      writeQIndex(detected.index);
+    }
   }
 
   function minimize() {
@@ -778,8 +863,8 @@
     let nodes = [];
     try {
       nodes = Array.from(document.querySelectorAll(
-        "[data-complete], [role='status'], [aria-live], [class*='correct' i], [class*='submitted' i], [class*='feedback' i]",
-      )).slice(0, 40);
+        "[data-complete], [role='status'], [aria-live], [role='alert'], [class*='correct' i], [class*='submitted' i], [class*='feedback' i], [class*='result' i], .alert-success, [command*='feedback' i]",
+      )).slice(0, 50);
     } catch (error) {
       nodes = Array.from(document.querySelectorAll("[data-complete], [role='status'], [aria-live]")).slice(0, 40);
     }
@@ -813,24 +898,35 @@
     return accepted ? "accepted" : null;
   }
 
-  function noteCompletion(questionNumber) {
-    const current = Number.isFinite(questionNumber) ? questionNumber : detected && detected.current;
-    if (!Number.isFinite(current)) return;
-    if (scanCompletion() === "accepted") witness(current);
+  function noteCompletion(questionId) {
+    const key = normalizeQuestionId(questionId) || (detected && detected.key);
+    if (!key) return;
+    if (scanCompletion() === "accepted") witnessQuestion(key);
   }
 
   function maybeAdvance(question) {
-    const current = question.current;
-    if (!Number.isFinite(current) || current < 1) return;
+    const current = question && question.key;
+    if (!current) return;
     const previous = readQ();
-    if (previous == null || Number.isNaN(previous)) {
+    if (previous == null) {
       writeQ(current);
+      writeQIndex(question.index);
       return;
     }
     if (current === previous) return;
     const left = previous;
+    const prevIndex = readQIndex();
     writeQ(current);
-    if (current < left) return;
+    writeQIndex(question.index);
+    if (
+      question.kind === "numeric" &&
+      Number.isFinite(question.index) &&
+      Number.isFinite(prevIndex) &&
+      question.index < prevIndex
+    ) {
+      armedAttempt = null;
+      return;
+    }
     if (armedAttempt && armedAttempt.question === left && Date.now() - armedAttempt.at < 4000) {
       witness(left);
     }
@@ -841,10 +937,13 @@
   }
 
   function noteQuestion(question) {
-    if (!question || !Number.isFinite(question.current)) return;
+    if (!question || !question.key) return;
     detected = question;
     updateStatusLine();
-    const strong = Boolean(question.total) && question.confident !== false;
+    const strong =
+      question.kind === "slug"
+        ? Boolean(question.confident)
+        : Boolean(question.total) && question.confident !== false;
     if (!trackingEnabled()) {
       if (strong && !state.dismissedOrigins[location.origin] && mode === "gone") applyMode("tab");
       return;
@@ -862,6 +961,7 @@
 
   function scoreCandidate(question, text, top, active) {
     let score = 0;
+    if (question.kind === "slug") score += 90;
     if (question.total) score += 80;
     if (question.confident) score += 40;
     if (text.length < 48) score += 18;
@@ -869,7 +969,7 @@
     if (top >= 0 && top < 320) score += 22;
     else if (top >= 320 && top < 700) score += 8;
     if (active) score += 36;
-    if (!question.total && !active) score -= 12;
+    if (!question.total && question.kind !== "slug" && !active) score -= 12;
     return score;
   }
 
@@ -883,6 +983,7 @@
       "[aria-live]",
       "[aria-current='true']",
       "[aria-current='step']",
+      "[aria-label]",
       "[data-question-index]",
       "[data-current-question]",
       "[data-testid*='question' i]",
@@ -890,6 +991,9 @@
       "[id*='question' i]",
       "[class*='problem' i]",
       "[id*='problem' i]",
+      "[class*='active' i]",
+      "[class*='selected' i]",
+      "button[aria-pressed='true']",
     ];
     let nodes = [];
     try {
@@ -910,8 +1014,14 @@
       } catch (error) {
         continue;
       }
-      if (!text || text.length > 180) continue;
-      const question = GetDone.findQuestion(text);
+      let question = null;
+      const aria = element.getAttribute("aria-label");
+      if (aria) question = GetDone.findQuestion(aria.replace(/\s+/g, " ").trim());
+      if (!text || text.length > 180) {
+        if (!question) continue;
+      } else {
+        question = question || GetDone.findQuestion(text);
+      }
       if (!question) continue;
       let top = 0;
       let visible = true;
@@ -956,16 +1066,20 @@
         window.top.postMessage({
           source: QUESTION_MESSAGE,
           kind: "question",
+          key: question.key,
+          label: question.label,
+          index: question.index,
           current: question.current,
           total: question.total,
           confident: question.confident,
+          kindType: question.kind,
         }, "*");
       }
       if (scanCompletion() === "accepted") {
         window.top.postMessage({
           source: QUESTION_MESSAGE,
           kind: "complete",
-          current: question ? question.current : null,
+          question: question ? question.key : null,
         }, "*");
       }
       return;
@@ -1012,23 +1126,26 @@
   }
 
   function maybeFinishQuiz() {
-    if (!state || !trackingEnabled() || !detected || !detected.total) return;
-    if (detected.current !== detected.total) return;
-    noteCompletion(detected.current);
-    if (!isVerified(detected.current) || isPaid(detected.current)) return;
-    if (memoryFinished === detected.total) return;
+    if (!state || !trackingEnabled() || !detected || !detected.key) return;
+    if (detected.kind === "numeric") {
+      if (!detected.total || detected.index !== detected.total) return;
+    }
+    noteCompletion(detected.key);
+    if (!isVerified(detected.key) || isPaid(detected.key)) return;
+    const finishToken = detected.kind === "slug" ? detected.key : String(detected.total);
+    if (memoryFinished === finishToken) return;
     try {
-      if (sessionStorage.getItem(finishKey()) === String(detected.total)) return;
+      if (sessionStorage.getItem(finishKey()) === finishToken) return;
     } catch (error) {
       /* ignore */
     }
-    memoryFinished = detected.total;
+    memoryFinished = finishToken;
     try {
-      sessionStorage.setItem(finishKey(), String(detected.total));
+      sessionStorage.setItem(finishKey(), finishToken);
     } catch (error) {
       /* ignore */
     }
-    markPaid(detected.current);
+    markPaid(detected.key);
     reveal(1, "auto");
   }
 
@@ -1040,7 +1157,7 @@
     const label = controlLabel(control);
     noteCompletion();
     if (detected && answerPresent() && isAdvanceControl(label)) {
-      armedAttempt = { question: detected.current, at: Date.now() };
+      armAdvance(detected.key);
     }
     if (isTerminalFinish(label)) {
       if (window.top !== window) {
@@ -1125,6 +1242,23 @@
     return false;
   }
 
+  function hydrateQuestionMessage(data) {
+    if (!data || !data.key) return null;
+    const kind = data.kindType === "slug" ? "slug" : "numeric";
+    const index = data.index == null ? null : Number(data.index);
+    const current = data.current == null ? null : Number(data.current);
+    const total = data.total == null ? null : Number(data.total);
+    return {
+      key: String(data.key),
+      label: data.label ? String(data.label) : String(data.key),
+      index: Number.isFinite(index) ? index : null,
+      current: Number.isFinite(current) ? current : null,
+      total: Number.isFinite(total) ? total : null,
+      confident: Boolean(data.confident),
+      kind,
+    };
+  }
+
   function startParentBridge() {
     window.addEventListener("message", (event) => {
       const data = event.data;
@@ -1133,19 +1267,25 @@
         maybeFinishQuiz();
         return;
       }
+      if (data.kind === "armed") {
+        const question = normalizeQuestionId(data.question);
+        if (!question) return;
+        armedAttempt = { question, at: Number(data.at) || Date.now() };
+        return;
+      }
+      if (data.kind === "witness") {
+        witness(normalizeQuestionId(data.question));
+        return;
+      }
       if (data.kind === "complete") {
-        const current = Number(data.current);
-        witness(Number.isFinite(current) ? current : detected && detected.current);
+        const key = normalizeQuestionId(data.question) || normalizeQuestionId(data.current);
+        witness(key || (detected && detected.key));
         return;
       }
       if (data.kind !== "question") return;
-      const current = Number(data.current);
-      if (!Number.isFinite(current)) return;
-      noteQuestion({
-        current,
-        total: data.total == null ? null : Number(data.total),
-        confident: Boolean(data.confident),
-      });
+      const question = hydrateQuestionMessage(data);
+      if (!question) return;
+      noteQuestion(question);
     });
     try {
       if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
@@ -1166,7 +1306,12 @@
     if (revealedDropped) clearQuestionMemory();
     platform = detectPlatform();
     if (shadow.activeElement !== textarea) textarea.value = state.rawLinks;
-    const strong = Boolean(detected && detected.total && detected.confident);
+    const strong = Boolean(
+      detected &&
+        (detected.kind === "slug"
+          ? detected.confident
+          : detected.total && detected.confident),
+    );
     applyMode(desiredMode(strong));
     renderStage();
     if (imagesChanged) preloadAhead();

@@ -59,11 +59,15 @@ async function refreshStatus() {
     }
     if (response.platform) {
       const question = response.question;
-      const detail = question && question.total
-        ? ` Question ${question.current} of ${question.total}.`
-        : question
-          ? ` Question ${question.current}.`
-          : "";
+      let detail = "";
+      if (question && question.key) {
+        detail =
+          question.kind === "slug"
+            ? ` Problem ${question.label || question.key}.`
+            : question.total
+              ? ` Question ${question.index ?? question.key} of ${question.total}.`
+              : ` Question ${question.label || question.key}.`;
+      }
       status.textContent = `Watching ${response.platform}.${detail}`;
       return;
     }

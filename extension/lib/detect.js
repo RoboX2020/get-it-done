@@ -89,6 +89,65 @@
     return current >= 1 && total >= 1 && total <= 500 && current <= total;
   }
 
+  const SLUG_BODY = String.raw`\d{1,2}\.\d{1,3}(?:\.\d{1,3})?`;
+
+  function validSlug(slug) {
+    if (!slug || typeof slug !== "string") return false;
+    const parts = slug.split(".");
+    if (parts.length < 2 || parts.length > 3) return false;
+    return parts.every((part) => /^\d{1,3}$/.test(part));
+  }
+
+  function numericQuestion(current, total, confident) {
+    const key = String(current);
+    return {
+      key,
+      label: key,
+      index: current,
+      current,
+      total,
+      confident,
+      kind: "numeric",
+    };
+  }
+
+  function slugQuestion(slug, confident) {
+    return {
+      key: slug,
+      label: slug,
+      index: null,
+      current: null,
+      total: null,
+      confident,
+      kind: "slug",
+    };
+  }
+
+  function findQuestionSlug(text) {
+    if (!text || typeof text !== "string") return null;
+    const clean = text.replace(/\s+/g, " ").trim();
+    if (!clean || clean.length > 180) return null;
+
+    const labeled = [
+      new RegExp(String.raw`(?:question|problem|item|exercise|part)\s*#?\s*(${SLUG_BODY})\b`, "i"),
+      new RegExp(String.raw`\bQ\s*(${SLUG_BODY})\b`, "i"),
+    ];
+    for (const pattern of labeled) {
+      const match = clean.match(pattern);
+      if (!match || !validSlug(match[1])) continue;
+      return slugQuestion(match[1], true);
+    }
+
+    if (clean.length <= 28 && validSlug(clean)) return slugQuestion(clean, true);
+
+    if (clean.length <= 64) {
+      const tokens = clean.match(new RegExp(String.raw`\b${SLUG_BODY}\b`, "g"));
+      if (tokens && tokens.length === 1 && validSlug(tokens[0])) return slugQuestion(tokens[0], false);
+    }
+
+    return null;
+  }
+
   function findQuestion(text) {
     if (!text || typeof text !== "string") return null;
     const clean = text.replace(/\s+/g, " ").trim();
@@ -106,20 +165,32 @@
       const current = Number(match[1]);
       const total = Number(match[2]);
       if (!validPair(current, total)) return null;
-      return { current, total, confident: true };
+      return numericQuestion(current, total, true);
+    }
+
+    if (clean.length <= 48) {
+      const ofPair = clean.match(/\b(\d{1,3})\s+of\s+(\d{1,3})\b/i);
+      if (ofPair) {
+        const current = Number(ofPair[1]);
+        const total = Number(ofPair[2]);
+        if (validPair(current, total)) return numericQuestion(current, total, false);
+      }
     }
 
     const fraction = clean.match(/^(\d{1,3})\s*\/\s*(\d{1,3})$/);
     if (fraction) {
       const current = Number(fraction[1]);
       const total = Number(fraction[2]);
-      if (validPair(current, total) && total > 1) return { current, total, confident: false };
+      if (validPair(current, total) && total > 1) return numericQuestion(current, total, false);
     }
 
-    const currentOnly = clean.match(/(?:question|problem|item|exercise)\s*#?\s*(\d{1,3})\b/i);
+    const slugHit = findQuestionSlug(text);
+    if (slugHit) return slugHit;
+
+    const currentOnly = clean.match(/(?:question|problem|item|exercise)\s*#?\s*(\d{1,3})(?!\.\d)\b/i);
     if (currentOnly) {
       const current = Number(currentOnly[1]);
-      if (current >= 1 && current <= 500) return { current, total: null, confident: false };
+      if (current >= 1 && current <= 500) return numericQuestion(current, null, false);
     }
 
     return null;
@@ -151,8 +222,12 @@
 
   function completionFromClass(className) {
     const value = String(className || "");
-    if (/\b(incorrect|is-incorrect|not-correct|wrong)\b/i.test(value)) return "rejected";
-    if (/\b(is-correct|answer-correct|submitted|is-submitted)\b/i.test(value)) return "accepted";
+    if (/\b(incorrect|is-incorrect|not-correct|wrong|partial-credit|partialcredit)\b/i.test(value)) {
+      return "rejected";
+    }
+    if (/\b(is-correct|answer-correct|submitted|is-submitted|correct-feedback|feedback-correct|result-correct)\b/i.test(value)) {
+      return "accepted";
+    }
     if (/(^|[^a-z])correct([^a-z]|$)/i.test(value)) return "accepted";
     return null;
   }
@@ -161,8 +236,14 @@
     if (!text || typeof text !== "string") return null;
     const clean = text.replace(/\s+/g, " ").trim();
     if (!clean || clean.length > 120) return null;
-    if (/\b(try again|incorrect|not quite|not yet|wrong answer)\b/i.test(clean)) return "rejected";
-    if (/^(correct|that's correct|you are correct|submitted|answer submitted|response submitted|completed|nice work|well done)\b/i.test(clean)) {
+    if (/\b(try again|incorrect|not quite|not yet|wrong answer|partially correct|partial credit)\b/i.test(clean)) {
+      return "rejected";
+    }
+    if (
+      /^(correct|that's correct|you are correct|you're correct|submitted|answer submitted|response submitted|completed|nice work|well done|good job|nice job|great job|you got it|got it right|that's right|you are right|you're right|fully correct|all correct)\b/i.test(
+        clean,
+      )
+    ) {
       return "accepted";
     }
     return null;
@@ -188,6 +269,8 @@
     platformFromHost,
     platformFromSignals,
     findQuestion,
+    findQuestionSlug,
+    validSlug,
     completionFromClass,
     completionFromText,
     parseLinks,

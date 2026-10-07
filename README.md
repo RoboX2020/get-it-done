@@ -32,7 +32,7 @@ The badge on the icon is how many pictures are left.
 
 The panel opens on sites it recognizes, including Canvas (including school `instructure.com` domains), Pearson and MyLab, Edfinity, Blackboard, Moodle, Brightspace, Schoology, McGraw Hill Connect, Cengage, WebAssign, ALEKS, WileyPLUS, Gradescope, Google Classroom, DeltaMath, WeBWorK, Khan Academy, and others.
 
-On a school domain it does not know by name, it still looks for a question counter such as “Question 3 of 10”, “Problem 4/12”, or “Item 2 of 8”, including counters inside embedded frames. You can also open the panel on any page from the toolbar icon.
+On a school domain it does not know by name, it still looks for a question counter such as “Question 3 of 10”, “Problem 4/12”, or “Item 2 of 8”, including Pearson-style labels like “1.18.3” or “5.3”, including counters inside embedded frames. You can also open the panel on any page from the toolbar icon.
 
 A picture flashes only after the page records the question. That means a Correct, Submitted, or completed mark, or — on sites that save as you leave — an answer already filled in when their own Next or Submit moves you on. A blank skip does not count. Get Done has no button that reveals the next picture. Landing on a question, refreshing, or going backward does not either.
 
