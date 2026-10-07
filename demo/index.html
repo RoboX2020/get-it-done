@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" data-get-done-demo="true" data-get-done-platform="canvas">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quiz 4 · Canvas</title>
+    <link rel="icon" href="/ext/icons/icon32.png" />
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body data-platform="canvas">
+    <p class="preview-note">
+      Stand-in homework page. The side window is Get Done — finish a problem with Next and the next picture flashes.
+      <a href="#install">Install the extension</a>
+    </p>
+    <div class="lms">
+      <header class="lms-bar">
+        <div class="lms-id">
+          <strong id="brand">Canvas</strong>
+          <span id="course">Algebra II · Period 3</span>
+        </div>
+        <div class="switcher" id="switcher" aria-label="Preview platform"></div>
+      </header>
+      <main class="sheet">
+        <p class="question-header" id="q-label">Question 1 of 8</p>
+        <h1 id="q-title"></h1>
+        <div class="choices" id="choices"></div>
+        <p class="saved" id="saved" hidden>Saved on this problem. The picture waits until you move on.</p>
+        <div class="nav">
+          <button type="button" id="prev">Previous</button>
+          <button type="button" id="check">Check answer</button>
+          <button type="button" id="next" class="next">Next</button>
+        </div>
+      </main>
+    </div>
+    <section class="install" id="install">
+      <h2>Load Get Done in Chrome or Edge</h2>
+      <ol>
+        <li>Open <code>chrome://extensions</code>.</li>
+        <li>Turn on Developer mode.</li>
+        <li>Choose Load unpacked and select the <code>extension</code> folder in this project.</li>
+        <li>Pin Get Done. Paste one image link per question, then open the real homework.</li>
+      </ol>
+      <p>On Canvas, Pearson, Edfinity, and the other sites it recognizes, the panel opens on the right. Drag the top bar to move it, pull a corner to resize, or dock it left. Each time the question counter moves forward, the next picture flashes.</p>
+    </section>
+    <script src="./demo.js"></script>
+    <script>
+      if (!/[?&]bare=1(?:&|$)/.test(location.search)) {
+        const detect = document.createElement("script");
+        detect.src = "/ext/lib/detect.js";
+        detect.onload = () => {
+          const panel = document.createElement("script");
+          panel.src = "/ext/content/get-done.js";
+          document.body.appendChild(panel);
+        };
+        document.body.appendChild(detect);
+      }
+    </script>
+  </body>
+</html>

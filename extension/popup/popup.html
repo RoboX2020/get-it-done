@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Get Done</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="head">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <h1>Get Done</h1>
+        <p>A picture for every question you finish.</p>
+      </div>
+    </header>
+    <p class="status" id="status">Checking this page…</p>
+    <label for="links">Picture links</label>
+    <textarea
+      id="links"
+      spellcheck="false"
+      placeholder="https://example.com/sunrise.jpg&#10;https://example.com/ocean.jpg"
+    ></textarea>
+    <p class="count" id="count">One link per line. Five, ten, or forty-five.</p>
+    <p class="progress" id="progress"></p>
+    <div class="row">
+      <button id="save" class="primary" type="button">Save pictures</button>
+      <button id="open" class="ghost" type="button">Open panel</button>
+    </div>
+    <div class="row">
+      <button id="left" type="button">Dock left</button>
+      <button id="right" type="button">Dock right</button>
+      <button id="reset" type="button">Start over</button>
+    </div>
+    <p class="fine" id="fine"></p>
+    <script src="../lib/detect.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

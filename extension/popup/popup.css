@@ -1,0 +1,172 @@
+@font-face {
+  font-family: Outfit;
+  src: url("../fonts/outfit-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Outfit;
+  src: url("../fonts/outfit-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Outfit;
+  src: url("../fonts/outfit-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 360px;
+  padding: 16px 16px 14px;
+  background: #161411;
+  color: #f4efe6;
+  font-family: Outfit, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.mark {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 68% 30%, #e6a23c 0 4px, transparent 4.5px),
+    radial-gradient(circle at 50% 54%, #f4ecdc 0 5px, transparent 6px),
+    #2a241c;
+  box-shadow: inset 0 0 0 2px #e6a23c;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.head p,
+.fine,
+.count,
+.progress,
+.status {
+  margin: 0;
+}
+
+.head p {
+  color: #a39a8c;
+  font-size: 12.5px;
+}
+
+.status {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(244, 239, 230, 0.05);
+  color: #f4efe6;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+textarea {
+  width: 100%;
+  height: 148px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid rgba(244, 228, 200, 0.16);
+  background: #100e0c;
+  color: #f4efe6;
+  padding: 10px;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.count,
+.progress,
+.fine {
+  color: #a39a8c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.count {
+  margin-top: 6px;
+}
+
+.progress {
+  min-height: 16px;
+  margin-top: 2px;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+button {
+  appearance: none;
+  border-radius: 999px;
+  height: 34px;
+  padding: 0 12px;
+  font: 500 12.5px/1 Outfit, "Segoe UI", sans-serif;
+  cursor: pointer;
+  color: #cfc6b8;
+  background: transparent;
+  border: 1px solid rgba(244, 228, 200, 0.16);
+}
+
+button:hover {
+  color: #fff8ee;
+  border-color: rgba(244, 228, 200, 0.34);
+}
+
+.primary {
+  flex: 1;
+  background: #f3ecdf;
+  color: #1a1612;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.primary:hover {
+  background: #fff8ee;
+  color: #1a1612;
+}
+
+.ghost {
+  flex: none;
+}
+
+.fine {
+  margin-top: 12px;
+}
+
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #e6a23c;
+  outline-offset: 2px;
+}

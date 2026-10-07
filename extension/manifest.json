@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Get Done",
+  "version": "1.0.0",
+  "description": "Flash the next picture on your list every time you finish a homework question.",
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Get Done",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Period",
+        "mac": "Command+Shift+Period"
+      },
+      "description": "Show or hide the Get Done panel"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_idle",
+      "js": ["lib/detect.js", "content/get-done.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/get-done.css", "fonts/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

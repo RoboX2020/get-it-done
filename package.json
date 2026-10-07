@@ -1,0 +1,12 @@
+{
+  "name": "get-done",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 8741 --strictPort",
+    "test": "node extension/lib/detect.test.js"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
