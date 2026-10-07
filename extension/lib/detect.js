@@ -149,6 +149,25 @@
     }
   }
 
+  function completionFromClass(className) {
+    const value = String(className || "");
+    if (/\b(incorrect|is-incorrect|not-correct|wrong)\b/i.test(value)) return "rejected";
+    if (/\b(is-correct|answer-correct|submitted|is-submitted)\b/i.test(value)) return "accepted";
+    if (/(^|[^a-z])correct([^a-z]|$)/i.test(value)) return "accepted";
+    return null;
+  }
+
+  function completionFromText(text) {
+    if (!text || typeof text !== "string") return null;
+    const clean = text.replace(/\s+/g, " ").trim();
+    if (!clean || clean.length > 120) return null;
+    if (/\b(try again|incorrect|not quite|not yet|wrong answer)\b/i.test(clean)) return "rejected";
+    if (/^(correct|that's correct|you are correct|submitted|answer submitted|response submitted|completed|nice work|well done)\b/i.test(clean)) {
+      return "accepted";
+    }
+    return null;
+  }
+
   function parseLinks(text) {
     if (!text || typeof text !== "string") return [];
     const urls = [];
@@ -169,6 +188,8 @@
     platformFromHost,
     platformFromSignals,
     findQuestion,
+    completionFromClass,
+    completionFromText,
     parseLinks,
   };
 });

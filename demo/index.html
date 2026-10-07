@@ -9,7 +9,7 @@
   </head>
   <body data-platform="canvas">
     <p class="preview-note">
-      Stand-in homework page. The side window is Get Done — finish a problem with Next and the next picture flashes.
+      Stand-in homework page. Get the question right, then move on. The side window flashes the next picture only after the page records it.
       <a href="#install">Install the extension</a>
     </p>
     <div class="lms">
@@ -25,7 +25,7 @@
         <p class="question-header" id="q-label">Question 1 of 8</p>
         <h1 id="q-title"></h1>
         <div class="choices" id="choices"></div>
-        <p class="saved" id="saved" hidden>Saved on this problem. The picture waits until you move on.</p>
+        <p class="saved" id="saved" role="status" aria-live="polite" hidden></p>
         <div class="nav">
           <button type="button" id="prev">Previous</button>
           <button type="button" id="check">Check answer</button>
@@ -41,7 +41,7 @@
         <li>Choose Load unpacked and select the <code>extension</code> folder in this project.</li>
         <li>Pin Get Done. Paste one image link per question, then open the real homework.</li>
       </ol>
-      <p>On Canvas, Pearson, Edfinity, and the other sites it recognizes, the panel opens on the right. Drag the top bar to move it, pull a corner to resize, or dock it left. Each time the question counter moves forward, the next picture flashes.</p>
+      <p>On Canvas, Pearson, Edfinity, and the other sites it recognizes, the panel opens on the right. Drag the top bar to move it, pull the gold corner to resize, or dock it left. A picture flashes only after that page records the question as done and you move on.</p>
     </section>
     <script src="./demo.js"></script>
     <script>

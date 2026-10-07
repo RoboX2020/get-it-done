@@ -30,7 +30,7 @@
           </div>
           <div class="empty">
             <p class="empty-title">A picture for every question you finish.</p>
-            <p class="empty-copy">Paste one image link per question. Five, ten, or forty-five. Move to the next question and the next picture flashes here.</p>
+            <p class="empty-copy">Paste one image link per question. Five, ten, or forty-five. The next picture flashes only after the homework page records the question as done.</p>
             <button type="button" class="primary" data-action="setup">Add pictures</button>
           </div>
           <div class="broken">
@@ -54,7 +54,6 @@
           </div>
         </form>
         <footer class="foot">
-          <button type="button" class="primary wide" data-action="manual">I finished this question</button>
           <p class="status"></p>
           <div class="tools">
             <button type="button" data-action="setup">Pictures</button>
@@ -96,7 +95,6 @@
   let setupCount = null;
   let foot = null;
   let statusLine = null;
-  let primary = null;
   let leftBtn = null;
   let rightBtn = null;
   let resetBtn = null;
@@ -348,16 +346,75 @@
     }
   }
 
+  function verifiedKey() {
+    return `getDoneVerified:${location.host}`;
+  }
+
+  function paidKey() {
+    return `getDonePaid:${location.host}`;
+  }
+
+  const memorySets = {};
+
+  function readNumberSet(key) {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (raw == null) return new Set(memorySets[key] || []);
+      const values = raw.split(",").map(Number).filter((value) => Number.isFinite(value) && value > 0);
+      memorySets[key] = values;
+      return new Set(values);
+    } catch (error) {
+      return new Set(memorySets[key] || []);
+    }
+  }
+
+  function writeNumberSet(key, values) {
+    const list = [...values].filter((value) => Number.isFinite(value) && value > 0);
+    memorySets[key] = list;
+    try {
+      sessionStorage.setItem(key, list.join(","));
+    } catch (error) {
+      /* ignore */
+    }
+  }
+
+  function isVerified(questionNumber) {
+    return readNumberSet(verifiedKey()).has(questionNumber);
+  }
+
+  function isPaid(questionNumber) {
+    return readNumberSet(paidKey()).has(questionNumber);
+  }
+
+  function witness(questionNumber) {
+    if (!Number.isFinite(questionNumber) || questionNumber < 1) return;
+    const verified = readNumberSet(verifiedKey());
+    if (verified.has(questionNumber)) return;
+    verified.add(questionNumber);
+    writeNumberSet(verifiedKey(), verified);
+    updateStatusLine();
+  }
+
+  function markPaid(questionNumber) {
+    const paid = readNumberSet(paidKey());
+    paid.add(questionNumber);
+    writeNumberSet(paidKey(), paid);
+  }
+
   function clearQuestionMemory() {
     memoryQ = null;
     memoryHigh = null;
     memoryFinished = null;
     detected = null;
+    delete memorySets[verifiedKey()];
+    delete memorySets[paidKey()];
     try {
       sessionStorage.removeItem(questionKey());
       sessionStorage.removeItem(highKey());
       sessionStorage.removeItem("getDoneSuppress");
       sessionStorage.removeItem(finishKey());
+      sessionStorage.removeItem(verifiedKey());
+      sessionStorage.removeItem(paidKey());
     } catch (error) {
       /* ignore */
     }
@@ -452,20 +509,20 @@
     if (!detected) {
       statusLine.textContent = platform
         ? `Watching ${platform.name}. No question counter yet.`
-        : "No question counter yet. Use the button when you finish one.";
+        : "No question counter yet.";
       return;
     }
     const where = platform ? ` on ${platform.name}` : "";
-    statusLine.textContent = detected.total
-      ? `Question ${detected.current} of ${detected.total}${where}.`
-      : `Question ${detected.current}${where}.`;
-  }
-
-  function updatePrimary() {
-    if (!primary) return;
-    if (state.images.length === 0) primary.textContent = "Add pictures";
-    else if (state.revealed >= state.images.length) primary.textContent = "Add more pictures";
-    else primary.textContent = "I finished this question";
+    const place = detected.total
+      ? `Question ${detected.current} of ${detected.total}${where}`
+      : `Question ${detected.current}${where}`;
+    if (isPaid(detected.current)) {
+      statusLine.textContent = `${place}. Picture already flashed.`;
+    } else if (isVerified(detected.current)) {
+      statusLine.textContent = `${place}. Recorded. The picture flashes when you move on.`;
+    } else {
+      statusLine.textContent = `${place}. Sealed until this page records the question.`;
+    }
   }
 
   function setView(view) {
@@ -477,7 +534,6 @@
   function renderStage() {
     updateFraction();
     updateMeter();
-    updatePrimary();
     updateStatusLine();
     updateDockButtons();
     updatePill();
@@ -493,8 +549,8 @@
       photo.removeAttribute("src");
       waitCount.textContent = String(state.images.length);
       waitCopy.textContent = state.images.length === 1
-        ? "1 picture is sealed. Finish a question and it flashes here. Drag the top bar to move this window."
-        : `${state.images.length} pictures are sealed. Finish a question and the next one flashes here. Drag the top bar to move this window.`;
+        ? "1 picture is sealed. It flashes after the page records a finished question. Drag the top bar to move this window."
+        : `${state.images.length} pictures are sealed. Each one flashes after the page records the next finished question. Drag the top bar to move this window.`;
       return;
     }
     const index = Math.min(state.revealed, state.images.length) - 1;
@@ -652,7 +708,7 @@
     return new Promise((resolve) => {
       setView("photo");
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      kicker.textContent = reason === "manual" ? "Counted." : "That's one done.";
+      kicker.textContent = "That's one done.";
       cap.textContent = `Picture ${state.revealed} of ${state.images.length}`;
       photo.alt = cap.textContent;
       const finish = () => {
@@ -705,7 +761,6 @@
     await save();
     updateFraction();
     updateMeter();
-    updatePrimary();
     await animateTo(url, reason);
     preloadAhead();
 
@@ -719,49 +774,49 @@
     }
   }
 
-  function armManualReward() {
-    const payload = detected
-      ? { next: detected.current + 1, until: Date.now() + 5000 }
-      : { count: 1, until: Date.now() + 5000 };
+  function scanCompletion() {
+    let nodes = [];
     try {
-      sessionStorage.setItem("getDoneSuppress", JSON.stringify(payload));
+      nodes = Array.from(document.querySelectorAll(
+        "[data-complete], [role='status'], [aria-live], [class*='correct' i], [class*='submitted' i], [class*='feedback' i]",
+      )).slice(0, 40);
     } catch (error) {
-      /* ignore */
+      nodes = Array.from(document.querySelectorAll("[data-complete], [role='status'], [aria-live]")).slice(0, 40);
     }
+    let accepted = false;
+    for (const element of nodes) {
+      if (!(element instanceof Element)) continue;
+      if (element.closest && element.closest("#get-done-root")) continue;
+      let visible = true;
+      try {
+        const rect = element.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) visible = false;
+      } catch (error) {
+        visible = true;
+      }
+      if (!visible) continue;
+      const flag = element.getAttribute("data-complete");
+      if (flag === "true") return "accepted";
+      if (flag === "false") continue;
+      const fromClass = GetDone.completionFromClass(typeof element.className === "string" ? element.className : "");
+      if (fromClass === "rejected") continue;
+      let text = "";
+      try {
+        text = (element.textContent || "").replace(/\s+/g, " ").trim();
+      } catch (error) {
+        text = "";
+      }
+      const fromText = GetDone.completionFromText(text);
+      if (fromText === "rejected") continue;
+      if (fromClass === "accepted" || fromText === "accepted") accepted = true;
+    }
+    return accepted ? "accepted" : null;
   }
 
-  function onPrimary() {
-    if (state.images.length === 0 || state.revealed >= state.images.length) {
-      if (mode !== "open") openPanel();
-      setSetupOpen(true);
-      return;
-    }
-    armManualReward();
-    reveal(1, "manual");
-  }
-
-  function consumeSuppress(current) {
-    let raw = null;
-    try {
-      raw = sessionStorage.getItem("getDoneSuppress");
-    } catch (error) {
-      return false;
-    }
-    if (!raw) return false;
-    try {
-      const parsed = JSON.parse(raw);
-      if (!parsed || parsed.until < Date.now()) {
-        sessionStorage.removeItem("getDoneSuppress");
-        return false;
-      }
-      if (parsed.next === current || parsed.count > 0) {
-        sessionStorage.removeItem("getDoneSuppress");
-        return true;
-      }
-    } catch (error) {
-      return false;
-    }
-    return false;
+  function noteCompletion(questionNumber) {
+    const current = Number.isFinite(questionNumber) ? questionNumber : detected && detected.current;
+    if (!Number.isFinite(current)) return;
+    if (scanCompletion() === "accepted") witness(current);
   }
 
   function maybeAdvance(question) {
@@ -770,19 +825,19 @@
     const previous = readQ();
     if (previous == null || Number.isNaN(previous)) {
       writeQ(current);
-      const seen = readHigh();
-      writeHigh(seen == null ? current : Math.max(seen, current));
       return;
     }
     if (current === previous) return;
+    const left = previous;
     writeQ(current);
-    if (current < previous) return;
-    const mark = readHigh() == null ? previous : readHigh();
-    if (current <= mark) return;
-    const delta = current - mark;
-    writeHigh(current);
-    if (consumeSuppress(current)) return;
-    reveal(Math.min(delta, 3), "auto");
+    if (current < left) return;
+    if (armedAttempt && armedAttempt.question === left && Date.now() - armedAttempt.at < 4000) {
+      witness(left);
+    }
+    armedAttempt = null;
+    if (!isVerified(left) || isPaid(left)) return;
+    markPaid(left);
+    reveal(1, "auto");
   }
 
   function noteQuestion(question) {
@@ -906,13 +961,41 @@
           confident: question.confident,
         }, "*");
       }
+      if (scanCompletion() === "accepted") {
+        window.top.postMessage({
+          source: QUESTION_MESSAGE,
+          kind: "complete",
+          current: question ? question.current : null,
+        }, "*");
+      }
       return;
     }
     refreshPlatform();
     if (question) noteQuestion(question);
+    noteCompletion();
   }
 
   const NEXT_RE = /\b(next|continue|submit|check answer|save and continue|next question|next problem|next item)\b/i;
+  let armedAttempt = null;
+
+  function answerPresent() {
+    const picked = document.querySelector(
+      "input[type='radio']:checked, input[type='checkbox']:checked, [aria-checked='true'], [aria-selected='true'], .is-picked, .answer.selected, .selected-answer",
+    );
+    if (picked && !(picked.closest && picked.closest("#get-done-root"))) return true;
+    const fields = document.querySelectorAll("textarea, input[type='text'], input[type='number'], [contenteditable='true']");
+    for (const field of Array.from(fields).slice(0, 30)) {
+      if (field.closest && field.closest("#get-done-root")) continue;
+      const value = (field.value || field.textContent || "").trim();
+      if (value) return true;
+    }
+    return false;
+  }
+
+  function isAdvanceControl(label) {
+    if (/\bcheck answer\b/i.test(label)) return false;
+    return /\b(next|continue|submit|save and continue|next question|next problem|next item)\b/i.test(label);
+  }
   const FINISH_RE = /\b(submit quiz|submit assignment|submit exam|submit homework|finish attempt|finish quiz|finish homework|turn in|complete quiz|complete assignment)\b/i;
 
   function controlLabel(control) {
@@ -931,6 +1014,8 @@
   function maybeFinishQuiz() {
     if (!state || !trackingEnabled() || !detected || !detected.total) return;
     if (detected.current !== detected.total) return;
+    noteCompletion(detected.current);
+    if (!isVerified(detected.current) || isPaid(detected.current)) return;
     if (memoryFinished === detected.total) return;
     try {
       if (sessionStorage.getItem(finishKey()) === String(detected.total)) return;
@@ -943,6 +1028,7 @@
     } catch (error) {
       /* ignore */
     }
+    markPaid(detected.current);
     reveal(1, "auto");
   }
 
@@ -952,6 +1038,10 @@
     const control = target.closest("button, a, input[type='submit'], input[type='button'], [role='button']");
     if (!control || (control.closest && control.closest("#get-done-root"))) return;
     const label = controlLabel(control);
+    noteCompletion();
+    if (detected && answerPresent() && isAdvanceControl(label)) {
+      armedAttempt = { question: detected.current, at: Date.now() };
+    }
     if (isTerminalFinish(label)) {
       if (window.top !== window) {
         window.top.postMessage({ source: QUESTION_MESSAGE, kind: "finish" }, "*");
@@ -1041,6 +1131,11 @@
       if (!data || data.source !== QUESTION_MESSAGE) return;
       if (data.kind === "finish") {
         maybeFinishQuiz();
+        return;
+      }
+      if (data.kind === "complete") {
+        const current = Number(data.current);
+        witness(Number.isFinite(current) ? current : detected && detected.current);
         return;
       }
       if (data.kind !== "question") return;
@@ -1193,7 +1288,6 @@
       else if (name === "setup") setSetupOpen(true);
       else if (name === "close-setup") setSetupOpen(false);
       else if (name === "save-links") saveLinks();
-      else if (name === "manual") onPrimary();
       else if (name === "dock-left") dock("left");
       else if (name === "dock-right") dock("right");
       else if (name === "reset") armReset();
@@ -1249,7 +1343,6 @@
     setupCount = shell.querySelector(".setup-count");
     foot = shell.querySelector(".foot");
     statusLine = shell.querySelector(".status");
-    primary = shell.querySelector("[data-action='manual']");
     leftBtn = shell.querySelector("[data-action='dock-left']");
     rightBtn = shell.querySelector("[data-action='dock-right']");
     resetBtn = shell.querySelector("[data-action='reset']");

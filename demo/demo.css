@@ -185,8 +185,12 @@ h1 {
 
 .saved {
   margin: 12px 0 0;
-  color: #3d6b45;
+  color: #8a4034;
   font-size: 14px;
+}
+
+.saved.is-correct {
+  color: #2f6b45;
 }
 
 .nav {

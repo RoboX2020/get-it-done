@@ -1,5 +1,12 @@
 const assert = require("node:assert/strict");
-const { findQuestion, parseLinks, platformFromHost, platformFromSignals } = require("./detect");
+const {
+  findQuestion,
+  parseLinks,
+  platformFromHost,
+  platformFromSignals,
+  completionFromClass,
+  completionFromText,
+} = require("./detect");
 
 assert.deepEqual(findQuestion("Question 3 of 10"), { current: 3, total: 10, confident: true });
 assert.deepEqual(findQuestion("Question 45 of 45"), { current: 45, total: 45, confident: true });
@@ -46,5 +53,15 @@ assert.deepEqual(parseLinks("javascript:alert(1)\nhttps://ok.example/a.png"), ["
 assert.deepEqual(parseLinks("see https://ok.example/a.png)."), ["https://ok.example/a.png"]);
 assert.deepEqual(parseLinks("cdn.example.com/cat.webp"), ["https://cdn.example.com/cat.webp"]);
 assert.deepEqual(parseLinks("data:text/html,hi"), []);
+assert.equal(completionFromText("Correct"), "accepted");
+assert.equal(completionFromText("Correct. The diagonal is 13 cm."), "accepted");
+assert.equal(completionFromText("Answer submitted"), "accepted");
+assert.equal(completionFromText("Not yet — try another answer."), "rejected");
+assert.equal(completionFromText("Incorrect"), "rejected");
+assert.equal(completionFromText("Try again"), "rejected");
+assert.equal(completionFromText("Which particle carries a negative charge?"), null);
+assert.equal(completionFromClass("is-correct result"), "accepted");
+assert.equal(completionFromClass("incorrect"), "rejected");
+assert.equal(completionFromClass("question-header"), null);
 
 console.log("detect tests passed");

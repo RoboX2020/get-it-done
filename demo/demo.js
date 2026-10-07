@@ -1,35 +1,43 @@
 const QUESTIONS = [
   {
     title: "A rectangle is 12 cm by 5 cm. How long is the diagonal?",
-    choices: ["13 cm", "17 cm", "7 cm", "60 cm"],
+    choices: ["17 cm", "13 cm", "7 cm", "60 cm"],
+    answer: 1,
   },
   {
     title: "Solve 3x − 7 = 14.",
-    choices: ["x = 7", "x = 5", "x = 3", "x = 21"],
+    choices: ["x = 5", "x = 3", "x = 7", "x = 21"],
+    answer: 2,
   },
   {
     title: "Which particle carries a negative charge?",
-    choices: ["Electron", "Proton", "Neutron", "Nucleus"],
+    choices: ["Proton", "Neutron", "Electron", "Nucleus"],
+    answer: 2,
   },
   {
     title: "What is the derivative of x²?",
-    choices: ["2x", "x", "2", "x³"],
+    choices: ["x", "2", "2x", "x³"],
+    answer: 2,
   },
   {
     title: "A jacket is $18 after 10% off. What was the original price?",
-    choices: ["$20", "$16.20", "$19.80", "$28"],
+    choices: ["$16.20", "$20", "$19.80", "$28"],
+    answer: 1,
   },
   {
     title: "Simplify (2³)².",
-    choices: ["64", "32", "12", "256"],
+    choices: ["32", "12", "256", "64"],
+    answer: 3,
   },
   {
     title: "Two angles in a triangle are 40° and 65°. What is the third?",
-    choices: ["75°", "105°", "55°", "85°"],
+    choices: ["105°", "55°", "85°", "75°"],
+    answer: 3,
   },
   {
     title: "Which gas do plants take in for photosynthesis?",
-    choices: ["Carbon dioxide", "Oxygen", "Nitrogen", "Hydrogen"],
+    choices: ["Oxygen", "Nitrogen", "Hydrogen", "Carbon dioxide"],
+    answer: 3,
   },
 ];
 
@@ -87,6 +95,8 @@ const switcher = document.querySelector("#switcher");
 let platformId = "canvas";
 let index = 0;
 let submitted = false;
+const cleared = new Set();
+const picked = {};
 
 function currentPlatform() {
   return PLATFORMS[platformId];
@@ -103,25 +113,41 @@ function render() {
   label.textContent = platform.label(index + 1, QUESTIONS.length);
   title.textContent = question.title;
   document.title = `${platform.quiz} · ${platform.name}`;
+  const done = cleared.has(index);
   prev.textContent = platform.prev;
   prev.disabled = index === 0 || submitted;
   if (index === QUESTIONS.length - 1) {
     next.textContent = submitted ? "Submitted" : "Submit quiz";
-    next.disabled = submitted;
   } else {
     next.textContent = platform.next;
-    next.disabled = false;
   }
-  saved.hidden = true;
+  next.disabled = submitted || !done;
+  if (done) {
+    saved.hidden = false;
+    saved.dataset.complete = "true";
+    saved.className = "saved is-correct";
+    saved.textContent = "Correct";
+  } else {
+    saved.hidden = true;
+    delete saved.dataset.complete;
+    saved.className = "saved";
+    saved.textContent = "";
+  }
   choices.replaceChildren();
-  question.choices.forEach((choice) => {
+  question.choices.forEach((choice, choiceIndex) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "choice";
+    if (picked[index] === choiceIndex) button.classList.add("is-picked");
+    button.setAttribute("aria-checked", String(picked[index] === choiceIndex));
     button.textContent = choice;
     button.addEventListener("click", () => {
-      choices.querySelectorAll(".choice").forEach((item) => item.classList.remove("is-picked"));
-      button.classList.add("is-picked");
+      if (cleared.has(index)) return;
+      picked[index] = choiceIndex;
+      choices.querySelectorAll(".choice").forEach((item, itemIndex) => {
+        item.classList.toggle("is-picked", itemIndex === choiceIndex);
+        item.setAttribute("aria-checked", String(itemIndex === choiceIndex));
+      });
     });
     choices.appendChild(button);
   });
@@ -159,7 +185,23 @@ next.addEventListener("click", () => {
 });
 
 check.addEventListener("click", () => {
+  if (cleared.has(index) || submitted) return;
+  if (picked[index] == null) {
+    saved.hidden = false;
+    saved.dataset.complete = "false";
+    saved.className = "saved";
+    saved.textContent = "Choose an answer first.";
+    return;
+  }
+  if (picked[index] === QUESTIONS[index].answer) {
+    cleared.add(index);
+    render();
+    return;
+  }
   saved.hidden = false;
+  saved.dataset.complete = "false";
+  saved.className = "saved";
+  saved.textContent = "Not yet — try another answer.";
 });
 
 render();
