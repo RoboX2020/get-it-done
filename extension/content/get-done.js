@@ -67,7 +67,7 @@
       <div class="handle handle-e" data-resize="e"></div>
       <div class="handle handle-s" data-resize="s"></div>
       <div class="handle handle-w" data-resize="w"></div>
-      <div class="handle handle-se" data-resize="se"></div>
+      <div class="handle handle-se" data-resize="se" title="Drag to resize" aria-label="Resize"></div>
     </section>
     <button type="button" class="tab" hidden data-side="right">
       <span class="mark" aria-hidden="true"></span>
