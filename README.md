@@ -1,45 +1,101 @@
 # Get Done
 
-A browser extension that flashes the next picture on your list every time you finish a homework question.
+Browser extension that flashes the next picture on your list when you finish a homework question.
 
-Paste one image link per question — 5, 10, or 45. Get Done sits in a window on the left or right of the page. On Canvas, Pearson, Edfinity, and other homework sites, the next picture flashes only after that page records the question as done.
+Paste one image URL per question (5, 10, 45, …). A side panel sits on the left or right of the page. On Canvas, Pearson MyLab, Edfinity, and other sites, the next picture unlocks only after **the homework page** records that question as done—not when you click a button in Get Done.
 
-## Try it here
+## Install from GitHub (public)
+
+### 1. Get the code
+
+```bash
+git clone https://github.com/prajval-arora/get-it-done.git
+cd get-it-done
+```
+
+No Node.js required for the extension itself. Node is only needed if you want the local homework preview (optional).
+
+### 2. Load the extension in Chrome or Edge
+
+1. Open **Chrome** → `chrome://extensions` (or **Edge** → `edge://extensions`).
+2. Turn on **Developer mode** (top right).
+3. Click **Load unpacked**.
+4. Select the **`extension`** folder inside the repo—the folder that contains `manifest.json`.
+
+Pin **Get Done** on the toolbar.
+
+### 3. Add your reward pictures
+
+1. Click the Get Done icon.
+2. Paste **one direct image link per line** (as many lines as you have questions).
+3. Click **Save pictures**.
+
+### 4. Do homework
+
+Open your assignment on Canvas, Pearson, Edfinity, etc. The panel opens on the right by default.
+
+| Action | How |
+|--------|-----|
+| Move panel | Drag the top bar |
+| Resize | Drag the gold corner |
+| Dock left/right | **Left** / **Right** in the footer |
+| Show/hide | `Ctrl+Shift+.` (Windows/Linux) or `Cmd+Shift+.` (Mac) |
+
+**Rewards:** After the page shows the question is done (e.g. **Correct** after Check Answer), move to the **next** question. One picture flashes per question you leave—skipping blank or going back without finishing does not cheat the stack.
+
+### 5. After updates
+
+```bash
+cd get-it-done
+git pull
+```
+
+Then in `chrome://extensions`, click **Reload** on Get Done and refresh your homework tab.
+
+---
+
+## Pearson (MyLab / MathXL)
+
+Pearson often labels problems with **dotted IDs** (e.g. `1.18.3`, `5.3`, `2.4`), not “Question 3 of 10”. Get Done tracks those IDs inside Pearson’s player iframe. Status should look like **Problem 1.18.3 on Pearson**. Use **Check Answer**, wait for the page to mark it correct, then go to the next problem.
+
+---
+
+## Optional: local demo (no real LMS)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the homework preview at [http://127.0.0.1:8741](http://127.0.0.1:8741). Eight pictures are already queued. Pick an answer and press Check answer. A wrong try leaves the picture sealed. After the page shows Correct, press Next and the side window flashes the next picture. Drag the top bar to move it, pull the gold corner to resize, and use Left or Right to dock it.
+Open [http://127.0.0.1:8741](http://127.0.0.1:8741). Eight sample pictures are preloaded. Answer correctly, then press **Next**, to see the reward flash.
 
-Skipping ahead does not reveal a picture. Going back does not either.
+---
 
-## Install the extension
+## Supported sites
 
-Chrome and Edge:
+Canvas (`instructure.com`, school Canvas domains), Pearson / MyLab / MathXL, Edfinity, Blackboard, Moodle, Brightspace, Schoology, McGraw Hill Connect, Cengage, WebAssign, ALEKS, WileyPLUS, Gradescope, Google Classroom, DeltaMath, WeBWorK, Khan Academy, and others.
 
-1. Open `chrome://extensions`.
-2. Turn on Developer mode.
-3. Click Load unpacked and choose the `extension` folder in this project.
-4. Pin Get Done.
+On unknown domains, Get Done still looks for counters like “Question 3 of 10” or Pearson-style labels, including inside embedded frames. Use the toolbar popup → **Open panel** on any page.
 
-Click the toolbar icon to paste picture links before you start. On a recognized homework site the panel opens on the right. `Ctrl+Shift+Period` (`Command+Shift+Period` on Mac) shows or hides it.
+Picture links and progress stay in your browser (`chrome.storage.local`). Nothing is uploaded.
 
-The badge on the icon is how many pictures are left.
+---
 
-## What it watches
-
-The panel opens on sites it recognizes, including Canvas (including school `instructure.com` domains), Pearson and MyLab, Edfinity, Blackboard, Moodle, Brightspace, Schoology, McGraw Hill Connect, Cengage, WebAssign, ALEKS, WileyPLUS, Gradescope, Google Classroom, DeltaMath, WeBWorK, Khan Academy, and others.
-
-On a school domain it does not know by name, it still looks for a question counter such as “Question 3 of 10”, “Problem 4/12”, or “Item 2 of 8”, including Pearson-style labels like “1.18.3” or “5.3”, including counters inside embedded frames. You can also open the panel on any page from the toolbar icon.
-
-A picture flashes only after the page records the question. That means a Correct, Submitted, or completed mark, or — on sites that save as you leave — an answer already filled in when their own Next or Submit moves you on. A blank skip does not count. Get Done has no button that reveals the next picture. Landing on a question, refreshing, or going backward does not either.
-
-Links stay in the browser. Nothing is uploaded.
-
-## Checks
+## Tests
 
 ```bash
 npm test
 ```
+
+---
+
+## Publish this repo to GitHub (maintainers)
+
+If the repo is not on GitHub yet, from the project root:
+
+```bash
+gh auth login
+gh repo create prajval-arora/get-it-done --public --source=. --remote=origin --push --description "Homework reward browser extension"
+```
+
+Public URL: **https://github.com/prajval-arora/get-it-done**
