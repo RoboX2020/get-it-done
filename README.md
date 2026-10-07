@@ -9,7 +9,7 @@ Paste one image URL per question (5, 10, 45, …). A side panel sits on the left
 ### 1. Get the code
 
 ```bash
-git clone https://github.com/prajval-arora/get-it-done.git
+git clone https://github.com/RoboX2020/get-it-done.git
 cd get-it-done
 ```
 
@@ -86,16 +86,3 @@ Picture links and progress stay in your browser (`chrome.storage.local`). Nothin
 ```bash
 npm test
 ```
-
----
-
-## Publish this repo to GitHub (maintainers)
-
-If the repo is not on GitHub yet, from the project root:
-
-```bash
-gh auth login
-gh repo create prajval-arora/get-it-done --public --source=. --remote=origin --push --description "Homework reward browser extension"
-```
-
-Public URL: **https://github.com/prajval-arora/get-it-done**
