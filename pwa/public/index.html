@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#161411">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Get Done">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/icon192.png">
+<link rel="stylesheet" href="/app.css">
+<title>Get Done</title>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark"></span><span>Get Done</span></div>
+  <div class="count" id="count"></div>
+</header>
+
+<main>
+  <section id="stage" class="stage" aria-live="polite"></section>
+  <button id="done" class="big" type="button">I finished a question</button>
+  <p id="hint" class="hint"></p>
+
+  <section class="card">
+    <h2>Friend link</h2>
+    <div id="fl-new">
+      <p class="muted">Friends send you pictures. Each stays sealed until you finish a question, in random order.</p>
+      <label for="f-title">Assignment</label>
+      <input id="f-title" type="text" maxlength="60" placeholder="Math homework 5" autocomplete="off">
+      <label for="f-n">Number of questions</label>
+      <input id="f-n" type="number" min="1" max="200" value="10" inputmode="numeric">
+      <label for="f-due">Link closes at (optional)</label>
+      <input id="f-due" type="datetime-local">
+      <button id="f-create" class="primary" type="button">Make my link</button>
+    </div>
+    <div id="fl-live" hidden>
+      <p class="title" id="f-name"></p>
+      <input id="f-url" type="text" readonly>
+      <div class="row">
+        <button id="f-share" class="primary" type="button">Share link</button>
+        <button id="f-copy" class="ghost" type="button">Copy</button>
+      </div>
+      <p class="muted" id="f-status"></p>
+      <button id="f-stop" class="link" type="button">Remove this link</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Add pictures</h2>
+    <p class="muted">One direct image link per line. They unlock in this order, mixed with your friends' pictures.</p>
+    <textarea id="links" rows="4" placeholder="https://example.com/cat.jpg" spellcheck="false"></textarea>
+    <button id="save" class="primary" type="button">Save list</button>
+  </section>
+
+  <section class="card">
+    <h2>Unlocked</h2>
+    <div id="gallery" class="gallery"></div>
+    <p id="gal-empty" class="muted">Nothing unlocked yet.</p>
+  </section>
+
+  <section class="card">
+    <button id="reset" class="link" type="button">Start over (re-seal everything)</button>
+  </section>
+  <p class="muted foot">Your list and progress stay on this phone. Works in Chrome and Safari. Add it to your home screen to use it like an app.</p>
+</main>
+<div id="toast" class="toast" role="status"></div>
+<div id="viewer" class="viewer" hidden><img alt=""><button id="vclose" type="button">Close</button></div>
+<script src="/app.js"></script>
+</body>
+</html>
