@@ -1,0 +1,5 @@
+name = "get-done-app"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "./public"
