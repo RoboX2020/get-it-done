@@ -1530,6 +1530,21 @@
     applyMode(desiredMode(false));
     runScan();
     preloadAhead();
+    friendSyncPing();
+  }
+
+  function friendSyncPing() {
+    const ping = () => {
+      try {
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ type: "GET_DONE_SYNC" }, () => void chrome.runtime.lastError);
+        }
+      } catch (error) {
+        /* not an extension context */
+      }
+    };
+    ping();
+    setInterval(ping, 120000);
   }
 
   if (document.readyState === "loading") {
