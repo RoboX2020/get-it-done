@@ -44,3 +44,7 @@ textarea{resize:vertical}
 .viewer img{max-width:100%;max-height:80vh;border-radius:14px}
 .viewer button{margin-top:16px;min-height:46px;padding:0 24px;border-radius:12px;border:1px solid #3a3128;background:#1c1915;color:#f4efe6;font:600 16px Outfit,system-ui,sans-serif}
 [hidden]{display:none!important}
+.small{font-size:13px}
+.wide{width:100%;margin-top:12px}
+.lead h2{margin-top:0}
+#f-assign-show{overflow-wrap:anywhere}
