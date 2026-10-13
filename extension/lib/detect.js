@@ -263,7 +263,42 @@
     return urls;
   }
 
+  // Stable short hash of a question stem. Used when a site's question labels are random or missing.
+  function fingerprint(text) {
+    const clean = String(text || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 160);
+    if (clean.length < 20) return null;
+    let h = 2166136261;
+    for (let i = 0; i < clean.length; i += 1) {
+      h ^= clean.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return "fp:" + h.toString(36);
+  }
+
+  // Does this page belong to the assignment the user pasted? Same site, and the page path
+  // either sits under the pasted path or carries all of its long numeric ids.
+  function assignmentMatches(pageHref, assignUrl) {
+    if (!assignUrl) return true;
+    let page, link;
+    try {
+      page = new URL(pageHref);
+      link = new URL(assignUrl);
+    } catch (error) {
+      return false;
+    }
+    if (page.hostname.toLowerCase() !== link.hostname.toLowerCase()) return false;
+    const lp = link.pathname.replace(/\/+$/, "");
+    const pp = page.pathname.replace(/\/+$/, "");
+    const rest = pp + page.search + page.hash;
+    const ids = (lp + link.search + link.hash).match(/\d{3,}/g) || [];
+    if (ids.length) return ids.every((id) => rest.includes(id));
+    if (lp && lp !== "") return pp === lp || pp.startsWith(lp + "/");
+    return true;
+  }
+
   return {
+    fingerprint,
+    assignmentMatches,
     PLATFORMS,
     platformById,
     platformFromHost,
