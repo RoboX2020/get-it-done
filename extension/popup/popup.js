@@ -232,13 +232,34 @@ $("f-create").addEventListener("click", async () => {
     const n = Math.max(1, Math.min(200, parseInt($("f-n").value, 10) || 10));
     const dueVal = $("f-due").value ? new Date($("f-due").value).getTime() : null;
     if (dueVal && dueVal <= Date.now()) throw new Error("Pick a due time in the future.");
-    await GetDoneFriend.create($("f-title").value.trim() || "Homework", n, dueVal);
+    const assign = $("f-assign").value.trim();
+    try {
+      const u = new URL(assign);
+      if (!/^https?:$/.test(u.protocol)) throw new Error("x");
+    } catch (e) {
+      throw new Error("Paste the link to the assignment page so the pictures lock to it.");
+    }
+    await GetDoneFriend.create($("f-title").value.trim() || "Homework", n, dueVal, assign);
     fmsg("");
     await refreshFriend();
   } catch (e) {
     fmsg(e.message, true);
   }
   $("f-create").disabled = false;
+});
+
+$("f-import").addEventListener("click", async () => {
+  try {
+    const raw = $("f-code").value.trim();
+    if (!raw.startsWith("GD1.")) throw new Error("That is not a Get Done code.");
+    const c = JSON.parse(atob(raw.slice(4)));
+    if (!c.id || !c.secret || !c.url || !String(c.url).startsWith(GetDoneFriend.API_BASE + "/")) throw new Error("That code does not look right.");
+    await GetDoneFriend.setCfg({ id: c.id, secret: c.secret, url: c.url, title: c.title || "Homework", expected: c.expected || 10, due: c.due || null, assignUrl: c.assignUrl || "" });
+    fmsg("");
+    await refreshFriend();
+  } catch (e) {
+    fmsg(e.message, true);
+  }
 });
 
 $("f-copy").addEventListener("click", async () => {
