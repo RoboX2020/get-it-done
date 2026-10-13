@@ -1,0 +1,13 @@
+{
+  "name": "Get Done",
+  "short_name": "Get Done",
+  "description": "Finish a homework question, unlock a picture.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#161411",
+  "theme_color": "#161411",
+  "icons": [
+    { "src": "/icons/icon192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
