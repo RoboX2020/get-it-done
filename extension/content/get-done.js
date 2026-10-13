@@ -56,6 +56,7 @@
         <footer class="foot">
           <p class="status"></p>
           <div class="tools">
+            <button type="button" data-action="manual">Mark done by hand</button>
             <button type="button" data-action="setup">Pictures</button>
             <button type="button" data-action="dock-left" aria-pressed="false">Left</button>
             <button type="button" data-action="dock-right" aria-pressed="false">Right</button>
@@ -440,9 +441,71 @@
     return readIdSet(paidKey()).has(key);
   }
 
+  // Anti-cheat: a question only counts if real (trusted) input happened on it, for a minimum time.
+  const FRIEND_IMG = "https://get-done-friends.prajval-2029.workers.dev/i/";
+  const MIN_DWELL_MS = 6000;
+  const AUTO_COOLDOWN_MS = 5000;
+  const MANUAL_COOLDOWN_MS = 30000;
+  let evidence = { count: 0, firstAt: 0 };
+  let lastAutoAt = 0;
+  let lastManualAt = 0;
+
+  function noteEvidence() {
+    evidence.count += 1;
+    if (!evidence.firstAt) evidence.firstAt = Date.now();
+  }
+  function evidenceOk() {
+    return evidence.count >= 2 && evidence.firstAt > 0 && Date.now() - evidence.firstAt >= MIN_DWELL_MS;
+  }
+  function resetEvidence() {
+    evidence = { count: 0, firstAt: 0 };
+  }
+  function onActivity(event) {
+    // Events made by a page script (isTrusted false) are ignored.
+    if (!event || !event.isTrusted) return;
+    const target = event.target;
+    if (target && target.closest && target.closest("#get-done-root")) return;
+    if (window.top !== window) {
+      try {
+        window.top.postMessage({ source: QUESTION_MESSAGE, kind: "evidence" }, "*");
+      } catch (error) {
+        /* ignore */
+      }
+      return;
+    }
+    noteEvidence();
+  }
+
+  // When a site's labels are random or missing, identify the question by its own text.
+  function fingerprintQuestion() {
+    let field = null;
+    try {
+      const candidates = document.querySelectorAll(
+        "textarea, input[type='text'], input[type='number'], input:not([type]), input[type='radio'], input[type='checkbox'], select, [contenteditable='true'], math-field",
+      );
+      for (const el of candidates) {
+        if (el.closest && el.closest("#get-done-root")) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) continue;
+        if (rect.bottom < 0 || rect.top > innerHeight) continue;
+        field = el;
+        break;
+      }
+    } catch (error) {
+      return null;
+    }
+    if (!field) return null;
+    const box = field.closest("form, fieldset, [class*='question' i], [class*='problem' i], [class*='exercise' i], section, article") || field.parentElement;
+    if (!box) return null;
+    const key = GetDone.fingerprint(box.innerText || box.textContent || "");
+    if (!key) return null;
+    return { key, label: "this question", index: null, current: null, total: null, confident: false, kind: "fp" };
+  }
+
   function witness(questionId) {
     const key = normalizeQuestionId(questionId);
     if (!key) return;
+    if (!evidenceOk()) return;
     const verified = readIdSet(verifiedKey());
     if (verified.has(key)) return;
     verified.add(key);
@@ -816,6 +879,18 @@
     });
   }
 
+  // Hand marking stays as a fallback when a site can't be tracked. Real clicks only, and a cooldown.
+  function manualDone(event) {
+    if (!event || !event.isTrusted) return;
+    const wait = MANUAL_COOLDOWN_MS - (Date.now() - lastManualAt);
+    if (wait > 0) {
+      if (statusLine) statusLine.textContent = `Hand marking is limited. Try again in ${Math.ceil(wait / 1000)}s.`;
+      return;
+    }
+    lastManualAt = Date.now();
+    reveal(1, "manual");
+  }
+
   function reveal(count, reason) {
     const total = Math.max(0, count | 0);
     for (let index = 0; index < total; index += 1) {
@@ -839,6 +914,34 @@
       cap.textContent = "Paste more, or start the stack over.";
       pulse();
       return;
+    }
+
+    // Friend pictures belong to one assignment. Off that page, only your own pictures can flash.
+    let assign = "";
+    try {
+      const got = await chrome.storage.local.get("getDoneFriend");
+      assign = (got.getDoneFriend && got.getDoneFriend.assignUrl) || "";
+    } catch (error) {
+      assign = "";
+    }
+    if (assign && !GetDone.assignmentMatches(location.href, assign)) {
+      let pick = -1;
+      for (let i = state.revealed; i < state.images.length; i += 1) {
+        if (!String(state.images[i]).startsWith(FRIEND_IMG)) {
+          pick = i;
+          break;
+        }
+      }
+      if (pick < 0) {
+        renderStage();
+        kicker.textContent = "Not this assignment";
+        cap.textContent = "Your friends' pictures only unlock on the assignment their link was made for.";
+        pulse();
+        return;
+      }
+      const hold = state.images[pick];
+      state.images[pick] = state.images[state.revealed];
+      state.images[state.revealed] = hold;
     }
 
     const url = state.images[state.revealed];
@@ -931,7 +1034,11 @@
       witness(left);
     }
     armedAttempt = null;
-    if (!isVerified(left) || isPaid(left)) return;
+    const wasVerified = isVerified(left) && !isPaid(left);
+    resetEvidence();
+    if (!wasVerified) return;
+    if (Date.now() - lastAutoAt < AUTO_COOLDOWN_MS) return;
+    lastAutoAt = Date.now();
     markPaid(left);
     reveal(1, "auto");
   }
@@ -941,7 +1048,9 @@
     detected = question;
     updateStatusLine();
     const strong =
-      question.kind === "slug"
+      question.kind === "fp"
+        ? false
+        : question.kind === "slug"
         ? Boolean(question.confident)
         : Boolean(question.total) && question.confident !== false;
     if (!trackingEnabled()) {
@@ -1060,7 +1169,7 @@
 
   function runScan() {
     if (document.hidden) return;
-    const question = scanDocument();
+    const question = scanDocument() || fingerprintQuestion();
     if (window.top !== window) {
       if (question) {
         window.top.postMessage({
@@ -1187,6 +1296,7 @@
       /* observation is best-effort */
     }
     document.addEventListener("click", onClick, true);
+    for (const type of ["input", "change", "keydown", "pointerdown"]) document.addEventListener(type, onActivity, true);
     window.addEventListener("hashchange", scheduleScan);
     window.addEventListener("popstate", scheduleScan);
     setInterval(() => {
@@ -1244,7 +1354,7 @@
 
   function hydrateQuestionMessage(data) {
     if (!data || !data.key) return null;
-    const kind = data.kindType === "slug" ? "slug" : "numeric";
+    const kind = data.kindType === "slug" ? "slug" : data.kindType === "fp" ? "fp" : "numeric";
     const index = data.index == null ? null : Number(data.index);
     const current = data.current == null ? null : Number(data.current);
     const total = data.total == null ? null : Number(data.total);
@@ -1271,6 +1381,10 @@
         const question = normalizeQuestionId(data.question);
         if (!question) return;
         armedAttempt = { question, at: Number(data.at) || Date.now() };
+        return;
+      }
+      if (data.kind === "evidence") {
+        noteEvidence();
         return;
       }
       if (data.kind === "witness") {
@@ -1436,6 +1550,7 @@
       else if (name === "dock-left") dock("left");
       else if (name === "dock-right") dock("right");
       else if (name === "reset") armReset();
+      else if (name === "manual") manualDone(event);
     });
 
     setup.addEventListener("submit", (event) => {
