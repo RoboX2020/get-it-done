@@ -1,3 +1,23 @@
+if (typeof importScripts === "function") importScripts("lib/friend.js");
+
+let lastSync = 0;
+async function friendSync(force) {
+  if (!globalThis.GetDoneFriend) return null;
+  if (!force && Date.now() - lastSync < 45000) return null;
+  lastSync = Date.now();
+  try {
+    return await GetDoneFriend.sync();
+  } catch (error) {
+    return null;
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || message.type !== "GET_DONE_SYNC") return false;
+  friendSync(Boolean(message.force)).then((info) => sendResponse({ ok: true, info }));
+  return true;
+});
+
 async function refreshBadge() {
   const { getDoneState } = await chrome.storage.local.get("getDoneState");
   const images = (getDoneState && getDoneState.images) || [];
@@ -20,6 +40,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => {
   refreshBadge();
+  friendSync(true);
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
