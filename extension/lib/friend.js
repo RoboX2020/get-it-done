@@ -22,9 +22,9 @@
   }
   const setCfg = (cfg) => chrome.storage.local.set({ [KEY]: cfg });
 
-  async function create(title, expected, dueAt) {
+  async function create(title, expected, dueAt, assignUrl) {
     const r = await api(null, "/api/links", { method: "POST", body: JSON.stringify({ title, expected, dueAt }) });
-    const cfg = { id: r.id, secret: r.secret, url: r.url, title, expected, due: dueAt || null };
+    const cfg = { id: r.id, secret: r.secret, url: r.url, title, expected, due: dueAt || null, assignUrl: assignUrl || "" };
     await setCfg(cfg);
     return cfg;
   }
