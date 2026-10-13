@@ -17,20 +17,22 @@
 <body>
 <header class="top">
   <div class="brand"><span class="mark"></span><span>Get Done</span></div>
-  <div class="count" id="count"></div>
 </header>
 
 <main>
-  <section id="stage" class="stage" aria-live="polite"></section>
-  <button id="done" class="big" type="button">I finished a question</button>
-  <p id="hint" class="hint"></p>
+  <section class="card lead">
+    <h2>Pictures stay off this phone</h2>
+    <p class="muted">Friends send pictures to your link. They unlock only in the Get Done browser extension on your computer, on the assignment page you pick here, after the extension sees you finish a question and move on. This app never shows them.</p>
+  </section>
 
   <section class="card">
     <h2>Friend link</h2>
     <div id="fl-new">
-      <p class="muted">Friends send you pictures. Each stays sealed until you finish a question, in random order.</p>
-      <label for="f-title">Assignment</label>
+      <label for="f-title">Assignment name</label>
       <input id="f-title" type="text" maxlength="60" placeholder="Math homework 5" autocomplete="off">
+      <label for="f-assign">Assignment link</label>
+      <input id="f-assign" type="url" placeholder="Paste the link to this assignment" autocomplete="off" autocapitalize="off">
+      <p class="muted small">Pictures for this link only unlock on that assignment's page.</p>
       <label for="f-n">Number of questions</label>
       <input id="f-n" type="number" min="1" max="200" value="10" inputmode="numeric">
       <label for="f-due">Link closes at (optional)</label>
@@ -39,36 +41,21 @@
     </div>
     <div id="fl-live" hidden>
       <p class="title" id="f-name"></p>
+      <p class="muted small" id="f-assign-show"></p>
       <input id="f-url" type="text" readonly>
       <div class="row">
         <button id="f-share" class="primary" type="button">Share link</button>
         <button id="f-copy" class="ghost" type="button">Copy</button>
       </div>
       <p class="muted" id="f-status"></p>
+      <button id="f-pair" class="ghost wide" type="button">Copy code for my computer</button>
+      <p class="muted small">On your computer, open the Get Done extension, choose "Use a link from my phone" and paste the code. Keep the code private.</p>
       <button id="f-stop" class="link" type="button">Remove this link</button>
     </div>
   </section>
-
-  <section class="card">
-    <h2>Add pictures</h2>
-    <p class="muted">One direct image link per line. They unlock in this order, mixed with your friends' pictures.</p>
-    <textarea id="links" rows="4" placeholder="https://example.com/cat.jpg" spellcheck="false"></textarea>
-    <button id="save" class="primary" type="button">Save list</button>
-  </section>
-
-  <section class="card">
-    <h2>Unlocked</h2>
-    <div id="gallery" class="gallery"></div>
-    <p id="gal-empty" class="muted">Nothing unlocked yet.</p>
-  </section>
-
-  <section class="card">
-    <button id="reset" class="link" type="button">Start over (re-seal everything)</button>
-  </section>
-  <p class="muted foot">Your list and progress stay on this phone. Works in Chrome and Safari. Add it to your home screen to use it like an app.</p>
+  <p class="muted foot">Works in Chrome and Safari. Add it to your home screen to use it like an app.</p>
 </main>
 <div id="toast" class="toast" role="status"></div>
-<div id="viewer" class="viewer" hidden><img alt=""><button id="vclose" type="button">Close</button></div>
 <script src="/app.js"></script>
 </body>
 </html>
