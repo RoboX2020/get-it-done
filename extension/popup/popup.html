@@ -32,8 +32,39 @@
       <button id="right" type="button">Dock right</button>
       <button id="reset" type="button">Start over</button>
     </div>
+    <section class="friend" id="friend">
+      <h2>Friend link</h2>
+      <div id="friend-new">
+        <p class="hint">Friends upload pictures. Each one stays sealed until you finish a question, in random order.</p>
+        <label for="f-title">Assignment</label>
+        <input id="f-title" type="text" maxlength="60" placeholder="Math homework 5" />
+        <label for="f-n">Number of questions</label>
+        <input id="f-n" type="number" min="1" max="200" value="10" inputmode="numeric" />
+        <label for="f-due">Link closes at (optional, your assignment's due time)</label>
+        <input id="f-due" type="datetime-local" />
+        <button id="f-create" class="primary" type="button">Make my link</button>
+      </div>
+      <div id="friend-live" hidden>
+        <p class="fl-title" id="f-name"></p>
+        <input id="f-url" type="text" readonly />
+        <div class="row">
+          <button id="f-copy" class="primary" type="button">Copy link</button>
+          <button id="f-share" class="ghost" type="button">Share</button>
+        </div>
+        <p class="count" id="f-stats"></p>
+        <p class="hint">Pictures go straight into your sealed deck. You only see each one when it unlocks.</p>
+        <div class="row">
+          <button id="f-close" type="button">Close link</button>
+        </div>
+        <p class="hint" id="f-un-h" hidden>Unlocked so far (tap Delete to remove one)</p>
+        <div class="inbox" id="f-unlocked"></div>
+        <button id="f-new" class="ghost" type="button">New link for another assignment</button>
+      </div>
+      <p class="status" id="f-msg"></p>
+    </section>
     <p class="fine" id="fine"></p>
     <script src="../lib/detect.js"></script>
+    <script src="../lib/friend.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
