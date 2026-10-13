@@ -1,0 +1,8 @@
+name = "get-done-friends"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "get-done-friends"
+database_id = "f419ddaf-ee53-4d37-a635-8229b63e7118"
