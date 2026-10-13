@@ -27,7 +27,10 @@ async function currentState() {
 
 async function load() {
   const state = await currentState();
-  links.value = state.rawLinks || (state.images || []).join("\n");
+  links.value = (state.rawLinks || (state.images || []).join("\n"))
+    .split("\n")
+    .filter((l) => !GetDoneFriend.isFriendUrl(l.trim()))
+    .join("\n");
   renderCount(Number(state.revealed) || 0);
   await refreshStatus();
 }
@@ -92,8 +95,10 @@ async function send(message) {
 }
 
 document.querySelector("#save").addEventListener("click", async () => {
-  const images = GetDone.parseLinks(links.value);
   const prev = await currentState();
+  const friendUrls = (prev.images || []).filter((u) => GetDoneFriend.isFriendUrl(u));
+  const manual = GetDone.parseLinks(links.value).filter((u) => !GetDoneFriend.isFriendUrl(u));
+  const images = manual.concat(friendUrls);
   let revealed = Number(prev.revealed) || 0;
   if (revealed > images.length) revealed = images.length;
   await chrome.storage.local.set({
@@ -141,4 +146,135 @@ links.addEventListener("input", () => {
     : "One link per line. Five, ten, or forty-five.";
 });
 
-load();
+load().then(initFriend);
+
+/* ---------- friend link ---------- */
+const $ = (id) => document.getElementById(id);
+const fmsg = (t, bad) => {
+  $("f-msg").textContent = t || "";
+  $("f-msg").style.color = bad ? "#ff9b8a" : "";
+};
+let info = null;
+
+async function showFriend(cfg, data) {
+  $("friend-new").hidden = Boolean(cfg);
+  $("friend-live").hidden = !cfg;
+  if (!cfg) return;
+  $("f-name").textContent = cfg.title + " (about " + cfg.expected + " pictures)" + (cfg.due ? ", closes " + new Date(cfg.due).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+  $("f-url").value = cfg.url;
+  $("f-close").textContent = cfg.closed ? "Link closed" : "Close link";
+  $("f-close").disabled = Boolean(cfg.closed);
+  if (!data) return;
+  const state = await currentState();
+  const sealed = Math.max(0, data.items.length - Math.min(Number(state.revealed) || 0, data.items.length));
+  $("f-stats").textContent = data.items.length + " from friends, " + sealed + " still sealed";
+  // Only pictures that already unlocked are ever shown here.
+  const shown = (state.images || []).slice(0, Number(state.revealed) || 0).filter((u) => GetDoneFriend.isFriendUrl(u));
+  $("f-un-h").hidden = shown.length === 0;
+  const box = $("f-unlocked");
+  box.innerHTML = "";
+  for (const url of shown) {
+    const token = url.split("/i/")[1];
+    const item = data.items.find((i) => i.token === token);
+    if (!item) continue;
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "Unlocked picture";
+    const no = document.createElement("button");
+    no.textContent = "Delete";
+    no.className = "mini ghost";
+    no.onclick = () => removeItem(item.id);
+    cell.append(img, no);
+    box.appendChild(cell);
+  }
+}
+
+async function refreshFriend() {
+  const cfg = await GetDoneFriend.getCfg();
+  if (!cfg) return showFriend(null);
+  showFriend(cfg);
+  try {
+    const data = await chrome.runtime.sendMessage({ type: "GET_DONE_SYNC", force: true });
+    const fresh = await GetDoneFriend.getCfg();
+    info = data && data.info;
+    await showFriend(fresh, info);
+  } catch (e) {
+    fmsg("Could not reach the link service. Try again in a minute.", true);
+  }
+}
+
+async function removeItem(id) {
+  const cfg = await GetDoneFriend.getCfg();
+  try {
+    await GetDoneFriend.api(cfg, GetDoneFriend.ownerPath(cfg, "/items/" + id), { method: "DELETE" });
+    await refreshFriend();
+    const s = await currentState();
+    renderCount(Number(s.revealed) || 0);
+  } catch (e) {
+    fmsg(e.message, true);
+  }
+}
+
+async function initFriend() {
+  if (GetDoneFriend.API_BASE.includes("REPLACE")) {
+    $("friend").hidden = true;
+    return;
+  }
+  await refreshFriend();
+}
+
+$("f-create").addEventListener("click", async () => {
+  $("f-create").disabled = true;
+  fmsg("Making your link...");
+  try {
+    const n = Math.max(1, Math.min(200, parseInt($("f-n").value, 10) || 10));
+    const dueVal = $("f-due").value ? new Date($("f-due").value).getTime() : null;
+    if (dueVal && dueVal <= Date.now()) throw new Error("Pick a due time in the future.");
+    await GetDoneFriend.create($("f-title").value.trim() || "Homework", n, dueVal);
+    fmsg("");
+    await refreshFriend();
+  } catch (e) {
+    fmsg(e.message, true);
+  }
+  $("f-create").disabled = false;
+});
+
+$("f-copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText($("f-url").value);
+  fmsg("Link copied. Send it to your friends.");
+});
+
+$("f-share").addEventListener("click", async () => {
+  const cfg = await GetDoneFriend.getCfg();
+  const data = {
+    title: "Get Done",
+    text: "Send me a picture. It unlocks when I finish my homework (" + cfg.title + ").",
+    url: cfg.url,
+  };
+  try {
+    if (navigator.share) await navigator.share(data);
+    else {
+      await navigator.clipboard.writeText(data.text + " " + data.url);
+      fmsg("Message and link copied.");
+    }
+  } catch (e) {
+    /* share sheet closed */
+  }
+});
+
+$("f-close").addEventListener("click", async () => {
+  const cfg = await GetDoneFriend.getCfg();
+  try {
+    await GetDoneFriend.api(cfg, GetDoneFriend.ownerPath(cfg), { method: "PATCH", body: JSON.stringify({ closed: true }) });
+    await refreshFriend();
+  } catch (e) {
+    fmsg(e.message, true);
+  }
+});
+
+$("f-new").addEventListener("click", async () => {
+  await chrome.storage.local.remove(GetDoneFriend.KEY);
+  showFriend(null);
+});
