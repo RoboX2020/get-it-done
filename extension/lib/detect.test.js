@@ -6,6 +6,8 @@ const {
   platformFromSignals,
   completionFromClass,
   completionFromText,
+  fingerprint,
+  assignmentMatches,
 } = require("./detect");
 
 assert.deepEqual(findQuestion("Question 3 of 10"), {
@@ -189,3 +191,18 @@ assert.equal(completionFromClass("incorrect"), "rejected");
 assert.equal(completionFromClass("question-header"), null);
 
 console.log("detect tests passed");
+
+// fingerprint: same stem gives the same key, different stems differ, short text gives none
+assert.equal(fingerprint("Find the derivative of f(x) = 3x^2 + 5x - 7 at x = 2"), fingerprint("  find the DERIVATIVE of f(x) = 3x^2 + 5x - 7 at x = 2 "));
+assert.notEqual(fingerprint("Find the derivative of f(x) = 3x^2 + 5x - 7 at x = 2"), fingerprint("Find the derivative of f(x) = 3x^2 + 5x - 7 at x = 3"));
+assert.equal(fingerprint("short"), null);
+
+// assignment binding
+assert.equal(assignmentMatches("https://x.instructure.com/courses/123456/assignments/987654", ""), true);
+assert.equal(assignmentMatches("https://x.instructure.com/courses/123456/assignments/987654", "https://x.instructure.com/courses/123456/assignments/987654"), true);
+assert.equal(assignmentMatches("https://x.instructure.com/courses/123456/quizzes/55555/take", "https://x.instructure.com/courses/123456/assignments/987654"), false);
+assert.equal(assignmentMatches("https://x.instructure.com/courses/123456/assignments/987654/submissions/1", "https://x.instructure.com/courses/123456/assignments/987654"), true);
+assert.equal(assignmentMatches("https://y.instructure.com/courses/123456/assignments/987654", "https://x.instructure.com/courses/123456/assignments/987654"), false);
+assert.equal(assignmentMatches("https://www.edfinity.com/courses/abc/assignments/hw5", "https://www.edfinity.com/courses/abc/assignments/hw5"), true);
+assert.equal(assignmentMatches("https://www.edfinity.com/courses/abc/assignments/hw6", "https://www.edfinity.com/courses/abc/assignments/hw5"), false);
+console.log("detect tests ok");
