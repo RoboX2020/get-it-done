@@ -173,7 +173,7 @@ textarea:focus-visible {
 
 .friend { margin-top: 14px; padding-top: 12px; border-top: 1px solid #3a3128; }
 .friend h2 { font-size: 15px; margin: 0 0 6px; }
-.friend input[type="text"], .friend input[type="number"] {
+.friend input[type="text"], .friend input[type="url"], .friend input[type="number"] {
   width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #3a3128;
   background: #0f0d0a; color: #f4efe6; font: inherit; font-size: 13px;
 }
