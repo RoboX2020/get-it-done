@@ -1,0 +1,27 @@
+CREATE TABLE IF NOT EXISTS links (
+  id TEXT PRIMARY KEY,
+  secret_hash TEXT NOT NULL,
+  title TEXT NOT NULL,
+  expected INTEGER NOT NULL,
+  auto_approve INTEGER NOT NULL DEFAULT 0,
+  closed INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  link_id TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL,
+  uploader TEXT NOT NULL,
+  caption TEXT NOT NULL,
+  data TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS items_link ON items(link_id, status);
+CREATE TABLE IF NOT EXISTS hits (
+  ip TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS hits_ip ON hits(ip, kind, ts);
