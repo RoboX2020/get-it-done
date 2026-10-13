@@ -1,0 +1,46 @@
+@font-face{font-family:Outfit;src:url(/fonts/outfit-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Outfit;src:url(/fonts/outfit-600.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:Fraunces;src:url(/fonts/fraunces-600.woff2) format("woff2");font-weight:600;font-display:swap}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#161411}
+body{margin:0;background:#161411;color:#f4efe6;font-family:Outfit,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px;max-width:520px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:9px;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:20px}
+.mark{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#f2b968,#e07a4f)}
+.count{font-size:14px;color:#b9ae9c}
+main{max-width:520px;margin:0 auto;padding:6px 18px 40px}
+.stage{aspect-ratio:4/5;max-height:62vh;width:100%;border-radius:22px;background:#201c17;border:1px solid #3a3128;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}
+.stage img{width:100%;height:100%;object-fit:contain;display:block;animation:pop .45s ease}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.sealed{text-align:center;padding:24px;color:#b9ae9c}
+.sealed .lock{font-size:44px;line-height:1;margin-bottom:10px}
+.sealed b{display:block;font-family:Fraunces,Georgia,serif;font-size:22px;color:#f4efe6;margin-bottom:6px}
+.big{width:100%;margin-top:14px;min-height:60px;border:0;border-radius:18px;font:600 19px Outfit,system-ui,sans-serif;color:#1b140d;background:linear-gradient(135deg,#f2b968,#e8895a);box-shadow:0 8px 24px rgba(232,137,90,.25)}
+.big:active{transform:scale(.985)}
+.big[disabled]{opacity:.45;box-shadow:none}
+.hint{text-align:center;color:#b9ae9c;font-size:14px;margin:10px 0 0;min-height:20px}
+.card{margin-top:22px;padding:16px;background:#1c1915;border:1px solid #3a3128;border-radius:18px}
+h2{margin:0 0 8px;font-size:17px;font-family:Fraunces,Georgia,serif;font-weight:600}
+.muted{color:#b9ae9c;font-size:14px;line-height:1.45;margin:0 0 10px}
+.title{font-weight:600;margin:0 0 8px}
+label{display:block;font-size:13px;color:#b9ae9c;margin:12px 0 5px}
+input,textarea{width:100%;padding:13px 12px;border-radius:12px;border:1px solid #3a3128;background:#161411;color:#f4efe6;font:16px Outfit,system-ui,sans-serif}
+textarea{resize:vertical}
+.primary,.ghost{min-height:48px;padding:0 18px;border-radius:13px;font:600 16px Outfit,system-ui,sans-serif;border:1px solid #3a3128}
+.primary{background:#f4efe6;color:#161411;border-color:#f4efe6;margin-top:12px;width:100%}
+.ghost{background:transparent;color:#f4efe6}
+.row{display:flex;gap:10px;margin-top:10px}.row .primary{margin-top:0;flex:1}.row .ghost{flex:0 0 90px}
+.link{background:none;border:0;color:#b9ae9c;text-decoration:underline;font:14px Outfit,system-ui,sans-serif;padding:10px 0}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.th{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#201c17;border:1px solid #3a3128}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .x{position:absolute;right:4px;top:4px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(22,20,17,.8);color:#f4efe6;font-size:16px}
+.th .who{position:absolute;left:0;right:0;bottom:0;padding:14px 6px 4px;font-size:11px;background:linear-gradient(transparent,rgba(0,0,0,.7));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.foot{text-align:center;margin-top:18px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,30px);background:#f4efe6;color:#161411;padding:11px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;max-width:90%}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.viewer{position:fixed;inset:0;background:rgba(10,9,7,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;z-index:5}
+.viewer[hidden]{display:none}
+.viewer img{max-width:100%;max-height:80vh;border-radius:14px}
+.viewer button{margin-top:16px;min-height:46px;padding:0 24px;border-radius:12px;border:1px solid #3a3128;background:#1c1915;color:#f4efe6;font:600 16px Outfit,system-ui,sans-serif}
+[hidden]{display:none!important}
