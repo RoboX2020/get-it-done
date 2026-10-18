@@ -47,7 +47,8 @@ export function friendPage(id) {
 <div class="card" id="share" hidden><p style="color:var(--ink)">Know someone else who should send one? Pass it on.</p>
 <button class="ghost" id="sharebtn" type="button">Share this link</button></div>
 <small>Your pictures stay sealed until the person who sent you this link finishes their homework, so they can't peek. Photos are shrunk and stripped of location data before they leave your phone. They can delete a picture after it unlocks.</small>
-<p style="margin-top:28px;font-size:13px;opacity:.7">Want pictures that unlock while you do homework? Get Done is free for <a href="https://chromewebstore.google.com/detail/fjihfhfghhnckloeegjegmlachfgbiik">Chrome</a> and <a href="https://addons.mozilla.org/addon/get-done/">Firefox</a>.</p></main>
+<p style="margin-top:28px;font-size:13px;opacity:.7">Want pictures that unlock while you do homework? Get Done is free for <a href="https://chromewebstore.google.com/detail/fjihfhfghhnckloeegjegmlachfgbiik">Chrome</a> and <a href="https://addons.mozilla.org/addon/get-done/">Firefox</a>.</p>
+<div class="card" style="text-align:center"><p style="color:var(--ink);margin:0 0 4px">Doing homework of your own?</p><p style="margin:0">Get your friends to send sealed pictures too.</p><a class="btn" href="https://getdone.prajvalarora.com">Make your own Get Done link</a></div></main>
 <script>
 const ID=${JSON.stringify(id)};
 const $=s=>document.getElementById(s);
