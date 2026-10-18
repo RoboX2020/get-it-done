@@ -1062,7 +1062,43 @@
     return score;
   }
 
+  // On Edfinity the URL's assessment_item_id is the trustworthy per-question
+  // key; the page's headings name the assignment ("Section 12.1"), not the
+  // problem. The visible "3." label is the problem number to show.
+  function edfinityScan() {
+    try {
+      const p = platform || detectPlatform();
+      if (!p || p.id !== "edfinity") return null;
+      let labelText = "";
+      const isItemNumber = (el) => {
+        if (!el || (el.closest && el.closest("#get-done-root"))) return false;
+        const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+        if (!/^\d{1,3}\.$/.test(t)) return false;
+        if (el.children && el.children.length > 1) return false;
+        const rect = el.getBoundingClientRect();
+        return !(rect.width === 0 && rect.height === 0);
+      };
+      const headings = Array.from(document.querySelectorAll("main h1, main h2, main h3, main h4, [class*='item' i] h1, [class*='item' i] h2, [class*='item' i] h3, [class*='item' i] h4, main [class*='label' i]")).slice(0, 40);
+      for (const el of headings) {
+        if (isItemNumber(el)) { labelText = (el.textContent || "").trim(); break; }
+      }
+      if (!labelText) {
+        const any = Array.from(document.querySelectorAll("main *, [class*='item' i] *")).slice(0, 250);
+        for (const el of any) {
+          if (isItemNumber(el)) { labelText = (el.textContent || "").trim(); break; }
+        }
+      }
+      const hit = GetDone.edfinityItem(location.href, labelText);
+      if (!hit) return null;
+      return { ...hit, score: 1000 };
+    } catch (error) {
+      return null;
+    }
+  }
+
   function scanDocument() {
+    const edf = edfinityScan();
+    if (edf) return edf;
     const selectors = [
       "h1",
       "h2",

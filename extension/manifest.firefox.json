@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Get Done",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Flash the next picture on your list every time you finish a homework question.",
   "permissions": [
     "storage"

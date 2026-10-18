@@ -130,6 +130,34 @@
     };
   }
 
+  // Edfinity gives every assessment item its own id in the page URL
+  // (?assessment_item_id=...), which changes with every "Next item" - a far
+  // more reliable per-question key than anything in the DOM, where the big
+  // headings name the assignment ("Section 12.1"), not the problem. The
+  // visible "3." label is the human-facing problem number.
+  function edfinityItem(url, labelText) {
+    if (!url || typeof url !== "string") return null;
+    let itemId = null;
+    try {
+      itemId = new URL(url).searchParams.get("assessment_item_id");
+    } catch (error) {
+      return null;
+    }
+    if (!itemId || !/^[a-z0-9-]{6,64}$/i.test(itemId)) return null;
+    let label = "this item";
+    const m = /^\s*(\d{1,3})\.\s*$/.exec(typeof labelText === "string" ? labelText : "");
+    if (m) label = String(parseInt(m[1], 10));
+    return {
+      key: "edf-" + itemId,
+      label,
+      index: null,
+      current: null,
+      total: null,
+      confident: true,
+      kind: "slug",
+    };
+  }
+
   function findQuestionSlug(text) {
     if (!text || typeof text !== "string") return null;
     const clean = text.replace(/\s+/g, " ").trim();
@@ -314,6 +342,7 @@
     findQuestionSlug,
     validSlug,
     isFullSlug,
+    edfinityItem,
     completionFromClass,
     completionFromText,
     parseLinks,

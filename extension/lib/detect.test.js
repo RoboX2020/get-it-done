@@ -8,6 +8,7 @@ const {
   completionFromText,
   fingerprint,
   assignmentMatches,
+  edfinityItem,
 } = require("./detect");
 
 assert.deepEqual(findQuestion("Question 3 of 10"), {
@@ -217,3 +218,20 @@ assert.equal(assignmentMatches("https://y.instructure.com/courses/123456/assignm
 assert.equal(assignmentMatches("https://www.edfinity.com/courses/abc/assignments/hw5", "https://www.edfinity.com/courses/abc/assignments/hw5"), true);
 assert.equal(assignmentMatches("https://www.edfinity.com/courses/abc/assignments/hw6", "https://www.edfinity.com/courses/abc/assignments/hw5"), false);
 console.log("detect tests ok");
+
+// Edfinity per-item key: the URL's assessment_item_id identifies the problem;
+// the visible "3." label is the problem number to show. Assignment headings
+// like "Section 12.1" must never win.
+{
+  const url = "https://edfinity.com/assessment_sessions/6ad450184cefc50cae834b71?assessment_item_id=6ad450184cefc50cae834b75";
+  const hit = edfinityItem(url, "3.");
+  assert.equal(hit.key, "edf-6ad450184cefc50cae834b75");
+  assert.equal(hit.label, "3");
+  assert.equal(edfinityItem(url, "12.").label, "12");
+  assert.equal(edfinityItem(url, "").label, "this item");
+  assert.equal(edfinityItem("https://edfinity.com/assessment_sessions/x", "3."), null);
+  assert.equal(edfinityItem("https://edfinity.com/courses", null), null);
+  assert.equal(findQuestion("Section 12.1"), null);
+  assert.equal(findQuestion("Section 12.1 | Edfinity"), null);
+}
+console.log("edfinity tests passed");
