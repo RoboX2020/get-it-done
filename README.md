@@ -60,6 +60,10 @@ Pearson often labels problems with **dotted IDs** (e.g. `1.18.3`, `5.3`, `2.4`),
 
 ---
 
+## Firefox package
+
+`extension/manifest.firefox.json` is the AMO variant: same code, but `background.scripts` instead of a service worker, plus the Gecko add-on ID. To build the Firefox upload, copy the extension folder, replace `manifest.json` with `manifest.firefox.json`, and zip.
+
 ## Optional: local demo (no real LMS)
 
 ```bash
