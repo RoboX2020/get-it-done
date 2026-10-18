@@ -442,7 +442,6 @@
   }
 
   // Anti-cheat: a question only counts if real (trusted) input happened on it, for a minimum time.
-  const FRIEND_IMG = "https://get-done-friends.prajval-2029.workers.dev/i/";
   const MIN_DWELL_MS = 6000;
   const AUTO_COOLDOWN_MS = 5000;
   const MANUAL_COOLDOWN_MS = 30000;
@@ -507,10 +506,25 @@
     if (!key) return;
     if (!evidenceOk()) return;
     const verified = readIdSet(verifiedKey());
-    if (verified.has(key)) return;
-    verified.add(key);
-    writeIdSet(verifiedKey(), verified);
+    if (!verified.has(key)) {
+      verified.add(key);
+      writeIdSet(verifiedKey(), verified);
+      updateStatusLine();
+    }
+    payout(key);
+  }
+
+  // Each recorded question pays one picture, as soon as it is recorded.
+  // If the stack is empty it stays unpaid, so a new picture can claim it later.
+  function payout(questionId) {
+    const key = normalizeQuestionId(questionId);
+    if (!key || isPaid(key)) return;
+    if (!state || state.revealed >= state.images.length) return;
+    if (Date.now() - lastAutoAt < AUTO_COOLDOWN_MS) return;
+    lastAutoAt = Date.now();
+    markPaid(key);
     updateStatusLine();
+    reveal(1, "auto");
   }
 
   function postToTop(payload) {
@@ -664,7 +678,7 @@
     if (isPaid(detected.key)) {
       statusLine.textContent = `${place}. Picture already flashed.`;
     } else if (isVerified(detected.key)) {
-      statusLine.textContent = `${place}. Recorded. The picture flashes when you move on.`;
+      statusLine.textContent = `${place}. Recorded. Picture incoming.`;
     } else {
       statusLine.textContent = `${place}. Sealed until this page records the question.`;
     }
@@ -916,34 +930,6 @@
       return;
     }
 
-    // Friend pictures belong to one assignment. Off that page, only your own pictures can flash.
-    let assign = "";
-    try {
-      const got = await chrome.storage.local.get("getDoneFriend");
-      assign = (got.getDoneFriend && got.getDoneFriend.assignUrl) || "";
-    } catch (error) {
-      assign = "";
-    }
-    if (assign && !GetDone.assignmentMatches(location.href, assign)) {
-      let pick = -1;
-      for (let i = state.revealed; i < state.images.length; i += 1) {
-        if (!String(state.images[i]).startsWith(FRIEND_IMG)) {
-          pick = i;
-          break;
-        }
-      }
-      if (pick < 0) {
-        renderStage();
-        kicker.textContent = "Not this assignment";
-        cap.textContent = "Your friends' pictures only unlock on the assignment their link was made for.";
-        pulse();
-        return;
-      }
-      const hold = state.images[pick];
-      state.images[pick] = state.images[state.revealed];
-      state.images[state.revealed] = hold;
-    }
-
     const url = state.images[state.revealed];
     state.revealed += 1;
     await save();
@@ -1034,13 +1020,7 @@
       witness(left);
     }
     armedAttempt = null;
-    const wasVerified = isVerified(left) && !isPaid(left);
     resetEvidence();
-    if (!wasVerified) return;
-    if (Date.now() - lastAutoAt < AUTO_COOLDOWN_MS) return;
-    lastAutoAt = Date.now();
-    markPaid(left);
-    reveal(1, "auto");
   }
 
   function noteQuestion(question) {
@@ -1254,8 +1234,7 @@
     } catch (error) {
       /* ignore */
     }
-    markPaid(detected.key);
-    reveal(1, "auto");
+    payout(detected.key);
   }
 
   function onClick(event) {

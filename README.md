@@ -41,7 +41,7 @@ Open your assignment on Canvas, Pearson, Edfinity, etc. The panel opens on the r
 | Dock left/right | **Left** / **Right** in the footer |
 | Show/hide | `Ctrl+Shift+.` (Windows/Linux) or `Cmd+Shift+.` (Mac) |
 
-**Rewards:** After the page shows the question is done (e.g. **Correct** after Check Answer), move to the **next** question. One picture flashes per question you leave—skipping blank or going back without finishing does not cheat the stack.
+**Rewards:** As soon as the page shows the question is done (e.g. **Correct** after Check Answer), the next picture flashes. One picture per question, and each question pays only once—skipping blank or going back does not cheat the stack.
 
 ### 5. After updates
 
@@ -56,7 +56,7 @@ Then in `chrome://extensions`, click **Reload** on Get Done and refresh your hom
 
 ## Pearson (MyLab / MathXL)
 
-Pearson often labels problems with **dotted IDs** (e.g. `1.18.3`, `5.3`, `2.4`), not “Question 3 of 10”. Get Done tracks those IDs inside Pearson’s player iframe. Status should look like **Problem 1.18.3 on Pearson**. Use **Check Answer**, wait for the page to mark it correct, then go to the next problem.
+Pearson often labels problems with **dotted IDs** (e.g. `1.18.3`, `5.3`, `2.4`), not “Question 3 of 10”. Get Done tracks those IDs inside Pearson’s player iframe. Status should look like **Problem 1.18.3 on Pearson**. Use **Check Answer**; the picture flashes as soon as the page marks it correct.
 
 ---
 

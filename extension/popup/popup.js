@@ -233,11 +233,13 @@ $("f-create").addEventListener("click", async () => {
     const dueVal = $("f-due").value ? new Date($("f-due").value).getTime() : null;
     if (dueVal && dueVal <= Date.now()) throw new Error("Pick a due time in the future.");
     const assign = $("f-assign").value.trim();
-    try {
-      const u = new URL(assign);
-      if (!/^https?:$/.test(u.protocol)) throw new Error("x");
-    } catch (e) {
-      throw new Error("Paste the link to the assignment page so the pictures lock to it.");
+    if (assign) {
+      try {
+        const u = new URL(assign);
+        if (!/^https?:$/.test(u.protocol)) throw new Error("x");
+      } catch (e) {
+        throw new Error("That assignment link does not look like a web address.");
+      }
     }
     await GetDoneFriend.create($("f-title").value.trim() || "Homework", n, dueVal, assign);
     fmsg("");
