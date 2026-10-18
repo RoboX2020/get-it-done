@@ -1,4 +1,4 @@
-const CACHE = "get-done-app-v2";
+const CACHE = "get-done-app-v3";
 const SHELL = ["/", "/app.css", "/app.js", "/manifest.webmanifest", "/icons/icon192.png", "/fonts/outfit-400.woff2", "/fonts/outfit-600.woff2", "/fonts/fraunces-600.woff2"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

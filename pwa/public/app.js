@@ -47,7 +47,7 @@
     $("fl-new").hidden = !!f; $("fl-live").hidden = !f;
     if (!f) return;
     $("f-name").textContent = f.title || "Friend link";
-    $("f-assign-show").textContent = f.assignUrl ? "Locked to: " + f.assignUrl : "";
+    $("f-assign-show").textContent = f.assignUrl ? "Assignment: " + f.assignUrl : "";
     $("f-url").value = f.url;
     var s = S.count + (S.count === 1 ? " picture" : " pictures") + " received";
     if (f.due) s += ". " + (f.closed ? "Closed" : "Closes") + " " + new Date(f.due).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
@@ -58,10 +58,12 @@
     var b = $("f-create");
     var title = $("f-title").value.trim() || "Homework";
     var assign = $("f-assign").value.trim();
-    try {
-      var u = new URL(assign);
-      if (!/^https?:$/.test(u.protocol)) throw new Error("x");
-    } catch (e) { toast("Paste the link to the assignment page first."); return; }
+    if (assign) {
+      try {
+        var u = new URL(assign);
+        if (!/^https?:$/.test(u.protocol)) throw new Error("x");
+      } catch (e) { toast("That assignment link does not look like a web address."); return; }
+    }
     var n = parseInt($("f-n").value, 10) || 10;
     var due = $("f-due").value ? new Date($("f-due").value).getTime() : null;
     b.disabled = true;
