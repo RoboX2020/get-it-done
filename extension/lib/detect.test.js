@@ -127,15 +127,26 @@ assert.deepEqual(findQuestion("1.17.2"), {
   confident: true,
   kind: "slug",
 });
-assert.deepEqual(findQuestion("5.3"), {
-  key: "5.3",
-  label: "5.3",
+// Bare two-part numbers are assignment/section numbers (Edfinity "5.2",
+// Pearson "1.17"), not problem ids - the real problem id is three-part.
+assert.equal(findQuestion("5.3"), null);
+assert.equal(findQuestion("5.2"), null);
+assert.equal(findQuestion("Assignment 5.2"), null);
+assert.equal(findQuestion("HW 5.2"), null);
+assert.equal(findQuestion("5.2 Systems of Linear Equations"), null);
+assert.equal(findQuestion("Assignment 5.2 due Monday"), null);
+assert.deepEqual(findQuestion("5.2.4"), {
+  key: "5.2.4",
+  label: "5.2.4",
   index: null,
   current: null,
   total: null,
   confident: true,
   kind: "slug",
 });
+// A slug with an explicit question label still counts, even two-part.
+assert.equal(findQuestion("Problem 5.2").key, "5.2");
+assert.equal(findQuestion("Problem 5.2").kind, "slug");
 assert.equal(findQuestion("Homework 1.18.3 extra copy").kind, "slug");
 assert.equal(findQuestion("Homework 1.18.3 extra copy").key, "1.18.3");
 assert.equal(findQuestion("Problem 1.18.3").key, "1.18.3");

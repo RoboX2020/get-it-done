@@ -1092,7 +1092,12 @@
     }
     const found = [];
     const titleHit = GetDone.findQuestion(document.title || "");
-    if (titleHit) found.push({ ...titleHit, score: scoreCandidate(titleHit, document.title, 0, true) });
+    // The page title names the assignment (e.g. "Assignment 5.2 - Edfinity"),
+    // not the live problem, and it never changes between problems. A slug hit
+    // there freezes the question identity, so only numeric hits count.
+    if (titleHit && titleHit.kind !== "slug") {
+      found.push({ ...titleHit, score: scoreCandidate(titleHit, document.title, 0, true) });
+    }
 
     for (const element of nodes) {
       if (!(element instanceof Element)) continue;

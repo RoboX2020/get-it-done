@@ -98,6 +98,13 @@
     return parts.every((part) => /^\d{1,3}$/.test(part));
   }
 
+  function isFullSlug(slug) {
+    // A bare two-part number like "5.2" is the assignment/section number on
+    // platforms such as Edfinity and Pearson - the real problem id is
+    // three-part (5.2.4). Only a labeled slug ("Problem 5.2") may be two-part.
+    return validSlug(slug) && slug.split(".").length === 3;
+  }
+
   function numericQuestion(current, total, confident) {
     const key = String(current);
     return {
@@ -138,11 +145,11 @@
       return slugQuestion(match[1], true);
     }
 
-    if (clean.length <= 28 && validSlug(clean)) return slugQuestion(clean, true);
+    if (clean.length <= 28 && isFullSlug(clean)) return slugQuestion(clean, true);
 
     if (clean.length <= 64) {
       const tokens = clean.match(new RegExp(String.raw`\b${SLUG_BODY}\b`, "g"));
-      if (tokens && tokens.length === 1 && validSlug(tokens[0])) return slugQuestion(tokens[0], false);
+      if (tokens && tokens.length === 1 && isFullSlug(tokens[0])) return slugQuestion(tokens[0], false);
     }
 
     return null;
@@ -306,6 +313,7 @@
     findQuestion,
     findQuestionSlug,
     validSlug,
+    isFullSlug,
     completionFromClass,
     completionFromText,
     parseLinks,
