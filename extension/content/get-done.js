@@ -901,11 +901,16 @@
       const show = () => {
         photo.src = url;
       };
+      // Honor the OS "reduce motion" setting: skip the flash animation entirely.
       if (reduce) {
         show();
         finish();
         return;
       }
+      // Restart the CSS flash animation: remove the class, force the browser to
+      // notice (reading offsetWidth triggers a synchronous reflow - without this
+      // line, removing and re-adding the class in the same frame is a no-op and
+      // the animation wouldn't replay), then re-add.
       stage.classList.remove("is-flashing");
       void stage.offsetWidth;
       stage.classList.add("is-flashing");
@@ -949,6 +954,10 @@
     await animateTo(url, reason);
     preloadAhead();
 
+    // If the panel was tucked away before this reveal, pop back up briefly to
+    // show the reward, then tuck away again - but only if the user isn't
+    // interacting (hovering, dragging, resizing, or in setup). The second check
+    // after the wait matters: they may have grabbed the panel DURING the 1.1 s.
     if (wasMinimized && !hoverPanel) {
       await wait(1100);
       if (!hoverPanel && !setupOpen && !dragging && !resizing) {
@@ -981,9 +990,13 @@
         visible = true;
       }
       if (!visible) continue;
+      // Signal precedence, strongest first:
+      // 1. an explicit data-complete="true" attribute decides instantly
       const flag = element.getAttribute("data-complete");
       if (flag === "true") return "accepted";
       if (flag === "false") continue;
+      // 2. a "wrong answer" signal anywhere VETOS this element - a rejection never
+      // counts as progress, even if other text looks positive
       const fromClass = GetDone.completionFromClass(typeof element.className === "string" ? element.className : "");
       if (fromClass === "rejected") continue;
       let text = "";
@@ -1007,16 +1020,21 @@
   }
 
   // The question on screen changed: if the previous one was verified but unpaid, pay it out now.
+  // This is the payout state machine. "Verified" = the page confirmed the answer
+  // was accepted; "paid" = we already revealed a reward picture for it.
   function maybeAdvance(question) {
     const current = question && question.key;
     if (!current) return;
     const previous = readQ();
     if (previous == null) {
+      // First question seen since load: remember it, nothing to pay yet.
       writeQ(current);
       writeQIndex(question.index);
       return;
     }
+    // Same question still on screen - no change.
     if (current === previous) return;
+    // From here: the user genuinely MOVED from `left` (previous) to `current`.
     const left = previous;
     const prevIndex = readQIndex();
     writeQ(current);
@@ -1027,13 +1045,21 @@
       Number.isFinite(prevIndex) &&
       question.index < prevIndex
     ) {
+      // The question number went DOWN: the user navigated backwards to review an
+      // old question. That's not progress - never pay for re-visiting.
       armedAttempt = null;
       return;
     }
+    // If they clicked a Next/Submit-style button within the last 4 seconds (an
+    // "armed attempt"), count the advance as a witnessed completion even if we
+    // never saw an explicit "correct" banner - the click plus the page advancing
+    // is strong enough evidence.
     if (armedAttempt && armedAttempt.question === left && Date.now() - armedAttempt.at < 4000) {
       witness(left);
     }
     armedAttempt = null;
+    // Pay out only questions that were verified AND not already paid (idempotent:
+    // refreshing the page mid-quiz can't double-pay because paid IDs persist).
     if (!isVerified(left) || isPaid(left)) return;
     markPaid(left);
     reveal(1, "auto");
@@ -1065,6 +1091,15 @@
   }
 
   // Rank a possible question label (confident, labeled, near the top and active score higher).
+  // Each signal adds points; the biggest weights go to the strongest evidence:
+  //   +90 a URL-slug match (the site's own address says the question number)
+  //   +80 the label says "of Y" (a total is nearly always a real question counter)
+  //   +40 the parser marked the match confident (unambiguous phrasing)
+  //   +36 the element is marked "current" by the site (aria-current/active class)
+  //   +22/8 near the top of the page (question labels usually sit above the problem)
+  //   +16 the text mentions question/problem/item
+  //   +18 short text (long paragraphs are content, not labels)
+  //   -12 weak anonymous matches get a small penalty
   function scoreCandidate(question, text, top, active) {
     let score = 0;
     if (question.kind === "slug") score += 90;
@@ -1102,6 +1137,9 @@
       "[class*='selected' i]",
       "button[aria-pressed='true']",
     ];
+    // Gather candidate elements with one big selector query; cap at 70 so a huge
+    // page stays cheap. If the exotic selectors are unsupported (very old browser),
+    // fall back to plain headings.
     let nodes = [];
     try {
       nodes = Array.from(document.querySelectorAll(selectors.join(","))).slice(0, 70);
@@ -1109,11 +1147,15 @@
       nodes = Array.from(document.querySelectorAll("h1, h2, h3, h4")).slice(0, 40);
     }
     const found = [];
+    // The browser tab title often says "Question 3 of 10 - Site" - treat it as a
+    // candidate too (top=0 and active=true since titles are always "current").
     const titleHit = GetDone.findQuestion(document.title || "");
     if (titleHit) found.push({ ...titleHit, score: scoreCandidate(titleHit, document.title, 0, true) });
 
     for (const element of nodes) {
       if (!(element instanceof Element)) continue;
+      // Never read our OWN overlay UI (#get-done-root) - it contains the fraction
+      // "3/8" which would look exactly like a question counter!
       if (element.closest && element.closest("#get-done-root")) continue;
       let text = "";
       try {
