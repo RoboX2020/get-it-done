@@ -1,3 +1,13 @@
+// ============================================================================
+// background.js - the extension's always-on helper (a service worker).
+// Two jobs:
+//   1. Keep the little number on the toolbar icon up to date: how many
+//      reward pictures are still sealed (it re-reads storage whenever it
+//      changes, and when the browser starts).
+//   2. Forward the keyboard shortcut (toggle-panel) to the content script
+//      on the current tab, so Ctrl+Shift+Period opens/closes the panel.
+// It never sees page content itself - it just passes messages.
+// ============================================================================
 async function refreshBadge() {
   const { getDoneState } = await chrome.storage.local.get("getDoneState");
   const images = (getDoneState && getDoneState.images) || [];

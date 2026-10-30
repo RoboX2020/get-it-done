@@ -1,3 +1,10 @@
+// ============================================================================
+// popup.js - the toolbar popup: the extension's settings window.
+// Paste picture links here (saved to storage for the panel to use), see
+// which homework site and question the current tab is on, open/dock the
+// panel, and reset progress. It talks to the homework tab by sending
+// messages to the content script (GET_DONE_STATUS, GET_DONE_SHOW, ...).
+// ============================================================================
 const links = document.querySelector("#links");
 const count = document.querySelector("#count");
 const progress = document.querySelector("#progress");

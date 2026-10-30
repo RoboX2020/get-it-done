@@ -1,3 +1,10 @@
+// ============================================================================
+// detect.test.js - the test suite for detect.js (run with: npm test).
+// Each test feeds a snippet of text (like "Question 3 of 12") or a web
+// address into a detect.js function and checks the answer comes out right.
+// These tests are the safety net when adding a new homework site or
+// tweaking a pattern: change the pattern, run npm test, know nothing broke.
+// ============================================================================
 const assert = require("node:assert/strict");
 const {
   findQuestion,

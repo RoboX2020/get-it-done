@@ -1,3 +1,10 @@
+// ============================================================================
+// vite.config.js - the demo's dev server (npm run dev).
+// Besides serving the demo page, it mounts the real extension folder at
+// /ext so the demo can load the exact content script and CSS the installed
+// extension uses - what you try in the demo is what ships. The path checks
+// in the middleware make sure /ext can only read files inside extension/.
+// ============================================================================
 import { createReadStream, existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

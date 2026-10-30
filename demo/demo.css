@@ -1,3 +1,8 @@
+/*
+  Styling for the fake quiz on the demo page (demo/index.html + demo.js).
+  Only the pretend homework site; the reward panel's own look comes from
+  ../extension/content/get-done.css.
+*/
 @font-face {
   font-family: Outfit;
   src: url("/ext/fonts/outfit-400.woff2") format("woff2");

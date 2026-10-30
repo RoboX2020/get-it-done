@@ -1,3 +1,10 @@
+// ============================================================================
+// demo.js - a tiny fake quiz that pretends to be a homework site, so the
+// real Get Done panel (../extension/content/get-done.js) can be tried in a
+// plain browser tab. It renders one multiple-choice question at a time,
+// says "Correct!" when you pick right, and moves on with Next - exactly
+// the signals the extension watches for.
+// ============================================================================
 const QUESTIONS = [
   {
     title: "A rectangle is 12 cm by 5 cm. How long is the diagonal?",

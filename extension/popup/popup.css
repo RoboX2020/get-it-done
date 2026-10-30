@@ -1,3 +1,8 @@
+/*
+  The toolbar popup's styling: the warm paper-like look of the settings
+  window (popup.html / popup.js). Nothing here affects the homework page
+  itself - the on-page panel's styles live in content/get-done.css.
+*/
 @font-face {
   font-family: Outfit;
   src: url("../fonts/outfit-400.woff2") format("woff2");

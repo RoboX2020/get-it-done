@@ -1,3 +1,21 @@
+// ============================================================================
+// detect.js - the "what site is this and what question are you on" brain.
+//
+// Shared by the content script, the popup and the demo page (it loads as a
+// plain script and also works in Node for the tests). It answers three
+// things:
+//   1. PLATFORM: which homework site is this? (PLATFORMS matches the web
+//      address; SIGNAL_RULES sniffs page text as a fallback)
+//   2. QUESTION: findQuestion() reads labels like "Question 3 of 12" or
+//      "Problem 4.2.7" out of page text, with strict patterns first and
+//      looser guesses after (the "confident" flag says which).
+//   3. DONE OR NOT: completionFromClass / completionFromText read the
+//      words and CSS classes a site uses for "correct" vs "try again".
+//   Plus parseLinks(): turns the pasted list of picture links into clean
+//   URLs (one per line or comma-separated).
+// Everything is pattern matching on purpose: no network calls, no AI, so
+// it works offline and identically everywhere.
+// ============================================================================
 (function (root, factory) {
   const api = factory();
   if (typeof module === "object" && module.exports) module.exports = api;

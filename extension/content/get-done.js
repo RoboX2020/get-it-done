@@ -1,3 +1,42 @@
+// ============================================================================
+// Get Done - a browser extension that turns homework into a reward game.
+//
+// THE IDEA: you paste a list of picture links (one per homework question).
+// The extension watches your homework page; each time the page shows that
+// you finished a question, the next picture is revealed with a little
+// celebration. Finish the set, see them all.
+//
+// THE PIECES (this repo):
+//   extension/lib/detect.js      recognizes WHICH homework site this is and
+//                                reads "Question 3 of 12" labels off the page
+//   extension/content/get-done.js  THIS FILE: the panel on the homework page
+//                                and all the watching logic
+//   extension/content/get-done.css the panel's look
+//   extension/background.js      keeps the toolbar icon's number badge fresh
+//   extension/popup/*            the small settings window from the toolbar
+//   demo/*                       a fake homework page to try it without
+//                                installing the extension
+//
+// HOW THIS FILE WORKS, BIG PICTURE:
+//   1. main() loads saved state, mounts the panel, and starts watching.
+//   2. Watchers (DOM changes, clicks, URL changes) trigger runScan().
+//   3. runScan() asks "what question is on screen?" (scanDocument) and
+//      "did the page just mark something correct?" (scanCompletion).
+//   4. When a question is completed, it is "witnessed"; when the student
+//      moves on to the next question, the completed one is "paid" - and
+//      reveal() shows the next picture. A question never pays twice.
+//   5. Some sites load questions inside iframes; the frame copy of this
+//      script reports findings up to the top page (postMessage bridge).
+//
+// WHEN DEBUGGING (reasoned from the code):
+//   - Panel never appears: the site must be recognized (see the platform
+//     list in lib/detect.js), or use the toolbar popup to open it manually.
+//   - Rewards not triggering: completion detection looks for "correct /
+//     submitted" words and classes near the top of the page; heavily
+//     customized homework themes may not match - check scanCompletion().
+//   - state lives in chrome.storage.local (key "getDoneState"); the demo
+//     page uses localStorage with the same key.
+// ============================================================================
 (function () {
   if (!globalThis.GetDone) return;
   if (window.__GET_DONE__) return;
@@ -119,6 +158,7 @@
   let chain = Promise.resolve();
   let mounted = false;
 
+  // Finds the panel stylesheet - as an installed extension (chrome.runtime URL) or on the demo page (next to this script).
   function cssHref() {
     try {
       if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
@@ -166,11 +206,13 @@
     },
   };
 
+  // Defensive copy: turns a stored value into a plain object, or an empty one.
   function asMap(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     return { ...value };
   }
 
+  // Checks a saved panel position/size actually contains real numbers.
   function sanitizeGeometry(geometry) {
     if (!geometry || typeof geometry !== "object") return null;
     const w = Number(geometry.w);
@@ -184,6 +226,7 @@
     return { x, y, w, h, dock };
   }
 
+  // Cleans whatever was loaded from storage into a complete state object with safe defaults.
   function normalize(raw) {
     const next = {
       rawLinks: "",
@@ -210,6 +253,7 @@
     return next;
   }
 
+  // The plain-data version of the current state, ready to save.
   function snapshot() {
     return {
       rawLinks: state.rawLinks,
@@ -227,10 +271,12 @@
     await storage.set(snapshot());
   }
 
+  // Keep a number inside a range.
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
 
+  // Where the panel first appears: right edge, vertically centered.
   function defaultGeometry() {
     const w = clamp(360, 260, Math.max(260, window.innerWidth - 24));
     const h = clamp(580, 360, Math.max(320, window.innerHeight - 32));
@@ -243,6 +289,7 @@
     };
   }
 
+  // Keep the panel fully on screen (after drags and window resizes).
   function clampGeometry() {
     const geometry = state.geometry;
     const minW = Math.min(260, Math.max(160, window.innerWidth - 16));
@@ -257,16 +304,19 @@
     geometry.y = clamp(geometry.y, 8, Math.max(8, window.innerHeight - geometry.h - 8));
   }
 
+  // True when running on the bundled demo page instead of inside a real browser extension.
   function isDemo() {
     return document.documentElement.dataset.getDoneDemo === "true";
   }
 
+  // Built-in sample pictures for the demo page.
   function demoImageUrls() {
     return [1, 2, 3, 4, 5, 6, 7, 8].map((number) => {
       return `${location.origin}/rewards/${String(number).padStart(2, "0")}.jpg`;
     });
   }
 
+  // Which homework site is this? Ask lib/detect.js, matching the site address.
   function detectPlatform() {
     const forced = document.documentElement.getAttribute("data-get-done-platform");
     if (forced) {
@@ -285,6 +335,7 @@
     return platformFromDocument();
   }
 
+  // Fallback: sniff the page's own HTML for platform clues.
   function platformFromDocument() {
     const bits = [];
     const generator = document.querySelector('meta[name="generator"]');
@@ -301,10 +352,12 @@
     return GetDone.platformFromSignals(bits.join("\n"));
   }
 
+  // The sessionStorage key used to remember the current question on this site.
   function questionKey() {
     return `getDoneQ:${location.host}`;
   }
 
+  // Which question were you last on? (remembered so a reload does not pay out again)
   function readQ() {
     try {
       const stored = sessionStorage.getItem(questionKey());
@@ -315,6 +368,7 @@
     }
   }
 
+  // Store the current question id.
   function writeQ(value) {
     if (value == null || value === "") return;
     memoryQ = String(value);
@@ -325,6 +379,7 @@
     }
   }
 
+  // The numeric index of the last question (to tell forward from backward).
   function readQIndex() {
     try {
       const stored = sessionStorage.getItem(`${questionKey()}:index`);
@@ -336,6 +391,7 @@
     }
   }
 
+  // Store the current question index.
   function writeQIndex(value) {
     try {
       if (value == null || !Number.isFinite(value)) {
@@ -348,14 +404,17 @@
     }
   }
 
+  // sessionStorage key for the furthest question reached.
   function highKey() {
     return `getDoneHigh:${location.host}`;
   }
 
+  // sessionStorage key for the "final submit already paid" marker.
   function finishKey() {
     return `getDoneFinished:${location.host}`;
   }
 
+  // The furthest question number reached this session.
   function readHigh() {
     try {
       const stored = sessionStorage.getItem(highKey());
@@ -367,6 +426,7 @@
     }
   }
 
+  // Record the furthest question number reached.
   function writeHigh(value) {
     memoryHigh = value;
     try {
@@ -376,16 +436,19 @@
     }
   }
 
+  // localStorage key for the set of questions seen completed.
   function verifiedKey() {
     return `getDoneVerified:${location.host}`;
   }
 
+  // localStorage key for the set of questions already rewarded.
   function paidKey() {
     return `getDonePaid:${location.host}`;
   }
 
   const memorySets = {};
 
+  // Read one of those stored id sets (a map of question id to true).
   function readIdSet(key) {
     try {
       const raw = sessionStorage.getItem(key);
@@ -411,6 +474,7 @@
     }
   }
 
+  // Write one of those stored id sets back.
   function writeIdSet(key, values) {
     const list = [...values].filter((value) => typeof value === "string" && value);
     memorySets[key] = list;
@@ -421,6 +485,7 @@
     }
   }
 
+  // Tidy a question id into one consistent form.
   function normalizeQuestionId(value) {
     if (value == null || value === "") return null;
     if (typeof value === "string") return value;
@@ -428,18 +493,21 @@
     return null;
   }
 
+  // Has this question been seen completed yet?
   function isVerified(questionId) {
     const key = normalizeQuestionId(questionId);
     if (!key) return false;
     return readIdSet(verifiedKey()).has(key);
   }
 
+  // Has a picture already been given out for this question?
   function isPaid(questionId) {
     const key = normalizeQuestionId(questionId);
     if (!key) return false;
     return readIdSet(paidKey()).has(key);
   }
 
+  // Record a question as completed (verified).
   function witness(questionId) {
     const key = normalizeQuestionId(questionId);
     if (!key) return;
@@ -450,6 +518,7 @@
     updateStatusLine();
   }
 
+  // Send a message from an embedded frame up to the top page.
   function postToTop(payload) {
     if (window.top === window) return false;
     try {
@@ -460,17 +529,20 @@
     }
   }
 
+  // witness() plus notify the top page when inside a frame.
   function witnessQuestion(questionNumber) {
     if (postToTop({ kind: "witness", question: questionNumber })) return;
     witness(questionNumber);
   }
 
+  // Note "student clicked Next with an answer filled in": if a new question loads right after, count the previous one done.
   function armAdvance(questionNumber) {
     const payload = { question: questionNumber, at: Date.now() };
     if (postToTop({ kind: "armed", ...payload })) return;
     armedAttempt = payload;
   }
 
+  // Record that a question has had its reward picture.
   function markPaid(questionId) {
     const key = normalizeQuestionId(questionId);
     if (!key) return;
@@ -479,6 +551,7 @@
     writeIdSet(paidKey(), paid);
   }
 
+  // Forget the per-question tracking (used by "Start over").
   function clearQuestionMemory() {
     memoryQ = null;
     memoryHigh = null;
@@ -499,6 +572,7 @@
     }
   }
 
+  // Only auto-track on recognized homework sites (or the demo).
   function trackingEnabled() {
     const origin = location.origin;
     if (state.dismissedOrigins[origin]) return false;
@@ -506,6 +580,7 @@
     return Boolean(state.enabledOrigins[origin]);
   }
 
+  // Open the full panel when confident a question is on screen; otherwise just the edge tab.
   function desiredMode(strongQuestion) {
     const origin = location.origin;
     if (state.dismissedOrigins[origin]) return "gone";
@@ -515,6 +590,7 @@
     return "gone";
   }
 
+  // Which screen edge the minimized tab sits on.
   function tabSide() {
     if (state.geometry.dock === "left") return "left";
     if (state.geometry.dock === "right") return "right";
@@ -524,6 +600,7 @@
     return left <= right ? "left" : "right";
   }
 
+  // Put the panel where the saved state says it should be.
   function applyGeometry() {
     if (!panel || !state.geometry) return;
     const geometry = state.geometry;
@@ -536,12 +613,14 @@
     tab.style.transform = `translateY(${Math.round(y)}px)`;
   }
 
+  // Highlight the active Left/Right dock button.
   function updateDockButtons() {
     if (!leftBtn) return;
     leftBtn.setAttribute("aria-pressed", String(state.geometry.dock === "left"));
     rightBtn.setAttribute("aria-pressed", String(state.geometry.dock === "right"));
   }
 
+  // Show the platform name on the panel (e.g. "Canvas").
   function updatePill() {
     if (!pill) return;
     if (!platform) {
@@ -553,12 +632,14 @@
     pill.textContent = platform.name;
   }
 
+  // The "3 of 12" pictures counter.
   function updateFraction() {
     if (!fraction) return;
     const total = state.images.length;
     fraction.textContent = total ? `${state.revealed}/${total}` : "0";
   }
 
+  // The progress bar toward finishing all pictures.
   function updateMeter() {
     if (!meter) return;
     const total = state.images.length;
@@ -583,6 +664,7 @@
     }
   }
 
+  // The small status text at the panel's foot.
   function updateStatusLine() {
     if (!statusLine) return;
     if (!detected) {
@@ -607,12 +689,14 @@
     }
   }
 
+  // Switch the stage between empty / waiting / photo / broken.
   function setView(view) {
     stage.dataset.view = view;
     const caption = shadow.querySelector(".caption");
     if (caption) caption.hidden = view !== "photo";
   }
 
+  // Redraw the stage for the current state.
   function renderStage() {
     updateFraction();
     updateMeter();
@@ -649,6 +733,7 @@
     }
   }
 
+  // Switch between gone (hidden), tab (edge tab) and open (full panel).
   function applyMode(next) {
     mode = next;
     if (!host) return;
@@ -659,6 +744,7 @@
     else updateFraction();
   }
 
+  // Show or hide the paste-links form.
   function setSetupOpen(open) {
     setupOpen = open;
     setup.hidden = !open;
@@ -678,6 +764,7 @@
     renderStage();
   }
 
+  // The "N pictures ready" text under the textarea.
   function refreshSetupCount() {
     const urls = GetDone.parseLinks(textarea.value);
     if (!textarea.value.trim()) {
@@ -695,6 +782,7 @@
     return urls;
   }
 
+  // Save the pasted picture links into storage.
   function saveLinks() {
     const urls = refreshSetupCount();
     if (textarea.value.trim() && urls.length === 0) return;
@@ -706,6 +794,7 @@
     preloadAhead();
   }
 
+  // Quietly pre-load the next couple of pictures so rewards appear instantly.
   function preloadAhead() {
     state.images.slice(state.revealed, state.revealed + 2).forEach((url) => {
       const image = new Image();
@@ -714,6 +803,7 @@
     });
   }
 
+  // Pin the panel to the left or right screen edge.
   function dock(side, persist) {
     state.geometry.dock = side === "left" ? "left" : "right";
     clampGeometry();
@@ -722,6 +812,7 @@
     if (persist !== false) save();
   }
 
+  // After dragging, snap the panel to the nearest edge.
   function snapDock() {
     const geometry = state.geometry;
     if (geometry.x <= 28) dock("left", false);
@@ -732,6 +823,7 @@
     }
   }
 
+  // Show the full panel.
   function openPanel() {
     const origin = location.origin;
     delete state.dismissedOrigins[origin];
@@ -745,18 +837,21 @@
     }
   }
 
+  // Shrink the panel down to the edge tab.
   function minimize() {
     state.minimizedOrigins[location.origin] = true;
     save();
     applyMode("tab");
   }
 
+  // Hide everything on this site until a new question appears.
   function dismiss() {
     state.dismissedOrigins[location.origin] = true;
     save();
     applyMode("gone");
   }
 
+  // "Start over" needs two clicks: the first arms it, the second confirms.
   function armReset() {
     if (!resetArmed) {
       resetArmed = true;
@@ -778,10 +873,12 @@
     runScan();
   }
 
+  // Small promise-based sleep.
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  // Quick attention flash on the panel.
   function pulse() {
     stage.classList.remove("is-flashing");
     void stage.offsetWidth;
@@ -789,6 +886,7 @@
     setTimeout(() => stage.classList.remove("is-flashing"), 700);
   }
 
+  // Swap in a newly revealed picture with the flash/sparks animation.
   function animateTo(url, reason) {
     return new Promise((resolve) => {
       setView("photo");
@@ -816,6 +914,7 @@
     });
   }
 
+  // Queue up N reward reveals one at a time (chain keeps animations in order).
   function reveal(count, reason) {
     const total = Math.max(0, count | 0);
     for (let index = 0; index < total; index += 1) {
@@ -823,6 +922,7 @@
     }
   }
 
+  // Show the next picture: open the panel, count it, animate it, then re-minimize if you were not looking.
   async function revealOne(reason) {
     const origin = location.origin;
     const wasMinimized = Boolean(state.minimizedOrigins[origin]) || mode === "tab";
@@ -859,6 +959,7 @@
     }
   }
 
+  // Read the page for signs the current question was marked correct ("accepted") or wrong ("rejected").
   function scanCompletion() {
     let nodes = [];
     try {
@@ -898,12 +999,14 @@
     return accepted ? "accepted" : null;
   }
 
+  // If the page says the current question is done, witness it.
   function noteCompletion(questionId) {
     const key = normalizeQuestionId(questionId) || (detected && detected.key);
     if (!key) return;
     if (scanCompletion() === "accepted") witnessQuestion(key);
   }
 
+  // The question on screen changed: if the previous one was verified but unpaid, pay it out now.
   function maybeAdvance(question) {
     const current = question && question.key;
     if (!current) return;
@@ -936,6 +1039,7 @@
     reveal(1, "auto");
   }
 
+  // A (possibly new) question is on screen: update tracking and handle question-change payouts.
   function noteQuestion(question) {
     if (!question || !question.key) return;
     detected = question;
@@ -952,6 +1056,7 @@
     maybeAdvance(question);
   }
 
+  // Does this element look like the "current step" marker?
   function isCurrent(element) {
     const aria = element.getAttribute("aria-current");
     if (aria && aria !== "false") return true;
@@ -959,6 +1064,7 @@
     return /\b(active|current|selected|is-active)\b/i.test(className);
   }
 
+  // Rank a possible question label (confident, labeled, near the top and active score higher).
   function scoreCandidate(question, text, top, active) {
     let score = 0;
     if (question.kind === "slug") score += 90;
@@ -973,6 +1079,7 @@
     return score;
   }
 
+  // Search the page for the best "Question X of Y" label and return the winner.
   function scanDocument() {
     const selectors = [
       "h1",
@@ -1044,11 +1151,13 @@
   }
 
   let scanTimer = 0;
+  // Wait a beat after the page changes, then scan (pages update in bursts).
   function scheduleScan() {
     clearTimeout(scanTimer);
     scanTimer = setTimeout(runScan, 220);
   }
 
+  // Re-check which homework site this is and update the labels if it changed.
   function refreshPlatform() {
     const next = detectPlatform();
     const same = (next && next.id) === (platform && platform.id);
@@ -1058,6 +1167,7 @@
     updateStatusLine();
   }
 
+  // The regular scan: find the current question and completion state; inside an iframe, report up to the top page instead.
   function runScan() {
     if (document.hidden) return;
     const question = scanDocument();
@@ -1092,6 +1202,7 @@
   const NEXT_RE = /\b(next|continue|submit|check answer|save and continue|next question|next problem|next item)\b/i;
   let armedAttempt = null;
 
+  // Has the student actually entered an answer yet?
   function answerPresent() {
     const picked = document.querySelector(
       "input[type='radio']:checked, input[type='checkbox']:checked, [aria-checked='true'], [aria-selected='true'], .is-picked, .answer.selected, .selected-answer",
@@ -1106,12 +1217,14 @@
     return false;
   }
 
+  // Is this button a "Next / Continue / Submit" (but not "Check answer")?
   function isAdvanceControl(label) {
     if (/\bcheck answer\b/i.test(label)) return false;
     return /\b(next|continue|submit|save and continue|next question|next problem|next item)\b/i.test(label);
   }
   const FINISH_RE = /\b(submit quiz|submit assignment|submit exam|submit homework|finish attempt|finish quiz|finish homework|turn in|complete quiz|complete assignment)\b/i;
 
+  // Best human-readable label for a clicked button.
   function controlLabel(control) {
     return [
       control.getAttribute("aria-label"),
@@ -1121,10 +1234,12 @@
     ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim().slice(0, 120);
   }
 
+  // Is this the final "Submit quiz / assignment" button?
   function isTerminalFinish(label) {
     return FINISH_RE.test(label) || /^submit$/i.test(label);
   }
 
+  // On the final submit of the last question, pay out the last reward (once only).
   function maybeFinishQuiz() {
     if (!state || !trackingEnabled() || !detected || !detected.key) return;
     if (detected.kind === "numeric") {
@@ -1149,6 +1264,7 @@
     reveal(1, "auto");
   }
 
+  // Watch every click: note completions, arm Next-advances, handle final submits, rescan after navigation.
   function onClick(event) {
     const target = event.target;
     if (!target || !target.closest) return;
@@ -1171,6 +1287,7 @@
     setTimeout(runScan, 1100);
   }
 
+  // Set up the page watchers: DOM changes, clicks, and URL changes (homework sites update without reloading).
   function startObservers() {
     const root = document.documentElement;
     if (!root) return;
@@ -1197,6 +1314,7 @@
     }, 900);
   }
 
+  // A summary of the current state, for the toolbar popup.
   function statusPayload() {
     return {
       platform: platform ? platform.name : null,
@@ -1207,6 +1325,7 @@
     };
   }
 
+  // Handle commands from the toolbar popup (show / toggle / reset / dock / status).
   function onRuntimeMessage(message, _sender, sendResponse) {
     if (!message || typeof message !== "object") return false;
     if (message.type === "GET_DONE_STATUS") {
@@ -1242,6 +1361,7 @@
     return false;
   }
 
+  // Turn a report from an embedded frame into a question object.
   function hydrateQuestionMessage(data) {
     if (!data || !data.key) return null;
     const kind = data.kindType === "slug" ? "slug" : "numeric";
@@ -1259,6 +1379,7 @@
     };
   }
 
+  // In the TOP page: listen for reports from embedded frames (some sites load questions in iframes).
   function startParentBridge() {
     window.addEventListener("message", (event) => {
       const data = event.data;
@@ -1296,6 +1417,7 @@
     }
   }
 
+  // Handle messages arriving from other frames.
   function onExternal(raw) {
     const next = normalize(raw);
     if (!next.geometry) next.geometry = state.geometry || defaultGeometry();
@@ -1317,6 +1439,7 @@
     if (imagesChanged) preloadAhead();
   }
 
+  // React when the popup changes saved state (new links, reset) from elsewhere.
   function watchStorage() {
     try {
       if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
@@ -1333,6 +1456,7 @@
     }
   }
 
+  // Pointer moving while dragging the panel.
   function moveDrag(event) {
     const geometry = state.geometry;
     geometry.dock = "free";
@@ -1342,6 +1466,7 @@
     updateDockButtons();
   }
 
+  // Pointer moving while resizing the panel.
   function moveResize(event) {
     const geometry = state.geometry;
     const dx = event.clientX - resize.sx;
@@ -1363,6 +1488,7 @@
     updateDockButtons();
   }
 
+  // Pointer released: end the drag or resize.
   function endPointer() {
     if (!dragging && !resizing) return;
     dragging = false;
@@ -1373,6 +1499,7 @@
     save();
   }
 
+  // Wire up all the panel's buttons and drag/resize handles.
   function bind() {
     topbar.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
@@ -1460,6 +1587,7 @@
     });
   }
 
+  // Create the panel's shadow-DOM host on the page (once). Shadow DOM keeps the panel's CSS from clashing with the homework site.
   function mount() {
     if (document.getElementById("get-done-root")) return false;
     host = document.createElement("div");
@@ -1506,6 +1634,7 @@
     return true;
   }
 
+  // Start everything: load saved state, mount the panel, scan once, and begin watching.
   async function main() {
     if (window.top !== window) {
       startObservers();
